@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import stocksRoute from "./routes/stocks.js";
+import liveRoutes from "./routes/live.js";
 
 dotenv.config();
 const app = express();
@@ -18,6 +19,7 @@ mongoose
 
 // Routes
 app.use("/api/stocks", stocksRoute);
+app.use("/api/live", liveRoutes);
 
 app.get("/", (req, res) => {
   res.send("Stock Dashboard API Running");
