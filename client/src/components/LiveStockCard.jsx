@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useStockStream from "../hooks/useStockStream";
 import { api } from "../utils/api";
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
@@ -28,18 +29,92 @@ const formatCurrency = (value) =>
 const formatCompact = (value, formatter) =>
   Number.isFinite(Number(value)) ? formatter.format(Number(value)) : "--";
 
+function toNumber(value) {
+  if (value == null) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeTimestamp(value) {
+  if (!value) return null;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    if (String(value).length <= 10) {
+      return numeric * 1000;
+    }
+    return numeric;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function mergeEventIntoQuote(existing, event) {
+  if (!event || typeof event !== "object") return existing;
+  const next = existing ? { ...existing } : {};
+
+  const price = toNumber(event.p ?? event.price ?? event.lastPrice ?? event.close ?? event.c);
+  if (price != null) next.price = price;
+
+  const change = toNumber(event.change ?? event.todaysChange ?? event.delta ?? event.dollarChange);
+  if (change != null) next.change = change;
+
+  const changePct = toNumber(event.changePercent ?? event.todaysChangePerc ?? event.percent ?? event.percentage ?? event.pctChange);
+  if (changePct != null) {
+    next.changePercent = changePct;
+    next.changesPercentage = changePct;
+  }
+
+  const open = toNumber(event.o ?? event.open);
+  if (open != null) next.open = open;
+
+  const high = toNumber(event.h ?? event.high);
+  if (high != null) next.high = high;
+
+  const low = toNumber(event.l ?? event.low);
+  if (low != null) next.low = low;
+
+  const previousClose = toNumber(event.prevClose ?? event.previousClose ?? event.pc ?? event.c1);
+  if (previousClose != null) next.previousClose = previousClose;
+
+  const volume = toNumber(event.v ?? event.volume ?? event.accumulatedVolume ?? event.totalVolume);
+  if (volume != null) next.volume = volume;
+
+  const trades = toNumber(event.ticks ?? event.tradeCount ?? event.trades ?? event.n);
+  if (trades != null) next.trades = trades;
+
+  const vwap = toNumber(event.vw ?? event.vwap ?? event.volumeWeightedPrice);
+  if (vwap != null) next.vwap = vwap;
+
+  const timestampMs = normalizeTimestamp(event.t ?? event.timestamp ?? event.time ?? event.end ?? event.start);
+  if (timestampMs != null) {
+    next.timestamp = Math.floor(timestampMs / 1000);
+  }
+
+  next.lastEvent = event;
+  return next;
+}
+
 export default function LiveStockCard({ symbol = "" }) {
   const ticker = symbol.trim().toUpperCase();
   const [quote, setQuote] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState(null);
+  const { event: liveEvent, status: streamStatus } = useStockStream(ticker);
 
   useEffect(() => {
     let cancelled = false;
 
+    if (!ticker) {
+      setQuote(null);
+      setError("Symbol required");
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const fetchPrice = async () => {
       try {
-        const response = await api.get(`/live/${ticker}`);
+        const response = await api.get(`/live/stock/${ticker}`);
         if (cancelled) return;
 
         const payload = response.data;
@@ -54,23 +129,44 @@ export default function LiveStockCard({ symbol = "" }) {
         setError(null);
       } catch (err) {
         if (cancelled) return;
+        const message = err?.response?.data?.error || "Unable to load data";
         console.error("Failed to load", err);
         setQuote(null);
-        setError("Unable to load data");
+        setError(message);
       }
     };
 
     fetchPrice();
-    const intervalId = setInterval(fetchPrice, 15000);
 
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
     };
   }, [ticker]);
 
+  useEffect(() => {
+    if (!liveEvent) return;
+    setQuote((prev) => mergeEventIntoQuote(prev, liveEvent.data));
+    setLastUpdated(Date.now());
+    setError(null);
+  }, [liveEvent]);
+
   const baseCardClasses =
     "flex min-w-[16rem] flex-1 flex-col justify-between rounded-2xl border border-white/10 bg-white/10 p-6 text-white shadow-lg shadow-black/20 backdrop-blur transition-transform duration-200 hover:-translate-y-1 hover:border-white/20 hover:bg-white/15";
+
+  const streamLabel = (() => {
+    switch (streamStatus) {
+      case "connecting":
+        return "Connecting…";
+      case "ready":
+        return "Live Ready";
+      case "streaming":
+        return "Live Updates";
+      case "error":
+        return "Stream Offline";
+      default:
+        return "Massive Snapshot";
+    }
+  })();
 
   if (error) {
     return (
@@ -151,7 +247,7 @@ export default function LiveStockCard({ symbol = "" }) {
           <p className="text-xs uppercase tracking-[0.3em] text-white/40">Previous session</p>
         </div>
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/70">
-          Massive Snapshot
+          {streamLabel}
         </span>
       </div>
 
