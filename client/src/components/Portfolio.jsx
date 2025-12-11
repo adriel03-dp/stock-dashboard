@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { api } from "../utils/api";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -72,7 +73,11 @@ export default function Portfolio({ items = [] }) {
   }, [items]);
 
   if (!items.length) {
-    return <div className="bg-white p-4 rounded shadow">No portfolios yet.</div>;
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
+        Create your first portfolio to start tracking performance.
+      </div>
+    );
   }
 
   return (
@@ -80,26 +85,36 @@ export default function Portfolio({ items = [] }) {
       {items.map((portfolio) => {
         const holdings = Array.isArray(portfolio.holdings) ? portfolio.holdings : [];
         return (
-          <div key={portfolio._id} className="rounded bg-white p-4 shadow">
-            <div className="flex justify-between">
+          <motion.div
+            key={portfolio._id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-md shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none"
+          >
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <h3 className="font-semibold">{portfolio.name}</h3>
-                <div className="text-sm text-gray-500">{holdings.length} holdings</div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{portfolio.name}</h3>
+                <div className="text-sm text-slate-500 dark:text-slate-400">{holdings.length} holdings</div>
               </div>
               <div className="text-right">
                 <PortfolioValueDisplay holdings={holdings} valueEntry={values[portfolio._id]} />
               </div>
             </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {holdings.map((holding) => (
-                <div key={holding.symbol} className="rounded border p-2">
-                  <div className="font-semibold">{holding.symbol}</div>
-                  <div className="text-sm">Qty: {holding.quantity}</div>
-                  <div className="text-sm">Avg: {formatCurrency(holding.avgPrice)}</div>
-                </div>
+                <motion.div
+                  key={holding.symbol}
+                  whileHover={{ y: -3 }}
+                  className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{holding.symbol}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Qty • {holding.quantity}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Avg • {formatCurrency(holding.avgPrice)}</div>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         );
       })}
     </div>
@@ -112,23 +127,23 @@ function PortfolioValueDisplay({ holdings = [], valueEntry }) {
   const value = valueEntry?.value;
   const isValueReady = value != null && !Number.isNaN(value);
   const profitLoss = isValueReady ? value - costBasis : null;
-  const plClass = profitLoss == null ? "text-gray-500" : profitLoss >= 0 ? "text-emerald-600" : "text-rose-600";
+  const plClass = profitLoss == null ? "text-slate-500 dark:text-slate-400" : profitLoss >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
 
   return (
-    <div className="space-y-0.5">
-      <div className="font-bold">
+    <div className="space-y-1 text-right">
+      <div className="text-sm font-semibold text-slate-900 dark:text-white">
         Value: {hasError ? (
-          <span className="text-sm text-rose-600">{valueEntry.error}</span>
+          <span className="text-sm text-rose-600 dark:text-rose-400">{valueEntry.error}</span>
         ) : isValueReady ? (
           formatCurrency(value)
         ) : (
-          <span className="text-sm text-gray-500">Loading…</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Loading…</span>
         )}
       </div>
-      <div className={`text-sm ${plClass}`}>
+      <div className={`text-xs font-semibold ${plClass}`}>
         P/L: {profitLoss == null ? "—" : formatSignedCurrency(profitLoss)}
       </div>
-      <div className="text-xs text-gray-400">Cost basis: {formatCurrency(costBasis)}</div>
+      <div className="text-xs text-slate-400 dark:text-slate-600">Cost basis: {formatCurrency(costBasis)}</div>
     </div>
   );
 }
