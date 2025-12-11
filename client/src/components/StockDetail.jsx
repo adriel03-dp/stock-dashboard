@@ -172,22 +172,22 @@ export default function StockDetail({ data }) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="text-xs uppercase tracking-wide text-gray-500">{summary.exchange || "Stock"}</div>
+            <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">{summary.exchange || "Stock"}</div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-semibold">{summary.symbol}</h1>
-              {summary.name && <span className="text-sm text-gray-500">{summary.name}</span>}
+              <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">{summary.symbol}</h1>
+              {summary.name && <span className="text-sm text-gray-500 dark:text-slate-400">{summary.name}</span>}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-4xl font-semibold text-gray-900">{formatCurrency(summary.price, summary.currency)}</div>
-            <div className={`text-sm font-medium ${changeIsPositive ? "text-emerald-600" : "text-rose-600"}`}>
+            <div className="text-4xl font-semibold text-gray-900 dark:text-white">{formatCurrency(summary.price, summary.currency)}</div>
+            <div className={`text-sm font-medium ${changeIsPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
               {formatPercent(summary.changePercent ?? summary.change)}
             </div>
             {summary.lastUpdated && (
-              <div className="text-xs text-gray-400">Last updated {new Date(summary.lastUpdated).toLocaleString()}</div>
+              <div className="text-xs text-gray-400 dark:text-slate-500">Last updated {new Date(summary.lastUpdated).toLocaleString()}</div>
             )}
           </div>
         </div>
@@ -199,7 +199,9 @@ export default function StockDetail({ data }) {
               type="button"
               onClick={() => setRange(key)}
               className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                range === key ? "bg-blue-600 text-white" : "bg-slate-100 text-gray-600 hover:bg-slate-200"
+                range === key 
+                  ? "bg-blue-600 text-white" 
+                  : "bg-slate-100 text-gray-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
               {key}
@@ -210,7 +212,7 @@ export default function StockDetail({ data }) {
               type="button"
               onClick={handleAddToWatchlist}
               disabled={adding}
-              className="rounded-md border border-blue-600 px-3 py-1 text-sm font-medium text-blue-600 transition hover:bg-blue-50 disabled:opacity-50"
+              className="rounded-md border border-blue-600 px-3 py-1 text-sm font-medium text-blue-600 transition hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-950"
             >
               {adding ? "Adding…" : "Add to Watchlist"}
             </button>
@@ -221,7 +223,7 @@ export default function StockDetail({ data }) {
           {chartData.length ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="timeLabel" tick={{ fontSize: 12 }} stroke="#94a3b8" interval={Math.ceil(chartData.length / 8)} />
                 <YAxis stroke="#94a3b8" tickFormatter={(value) => formatCurrency(value, summary.currency)} tick={{ fontSize: 12 }} width={80} />
                 <Tooltip content={<ChartTooltip />} />
@@ -229,13 +231,13 @@ export default function StockDetail({ data }) {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-gray-400">No price history available for this range.</div>
+            <div className="flex h-full items-center justify-center text-sm text-gray-400 dark:text-slate-500">No price history available for this range.</div>
           )}
         </div>
       </section>
 
-      <section className="rounded border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800">Key Metrics</h2>
+      <section className="rounded border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Key Metrics</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard label="Open" value={formatCurrency(metrics.open, summary.currency)} />
           <MetricCard label="Previous Close" value={formatCurrency(metrics.previousClose, summary.currency)} />
@@ -253,16 +255,16 @@ export default function StockDetail({ data }) {
       </section>
 
       {(indicators.ema50 || indicators.ema200 || indicators.rsi || macd) && (
-        <section className="rounded border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800">Technical Indicators</h2>
+        <section className="rounded border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Technical Indicators</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {indicators.ema50 && <MetricCard label="EMA 50" value={formatCurrency(indicators.ema50, summary.currency)} />}
             {indicators.ema200 && <MetricCard label="EMA 200" value={formatCurrency(indicators.ema200, summary.currency)} />}
             {indicators.rsi && <MetricCard label="RSI" value={Number(indicators.rsi).toFixed(2)} />}
             {macd && (macd.macd != null || macd.signal != null || macd.histogram != null) && (
-              <div className="rounded border border-slate-200 p-3">
-                <div className="text-xs uppercase tracking-wide text-gray-500">MACD</div>
-                <div className="mt-2 space-y-1 text-sm text-gray-700">
+              <div className="rounded border border-slate-200 p-3 dark:border-slate-700">
+                <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">MACD</div>
+                <div className="mt-2 space-y-1 text-sm text-gray-700 dark:text-slate-300">
                   {macd.macd != null && <div>MACD: {Number(macd.macd).toFixed(2)}</div>}
                   {macd.signal != null && <div>Signal: {Number(macd.signal).toFixed(2)}</div>}
                   {macd.histogram != null && <div>Histogram: {Number(macd.histogram).toFixed(2)}</div>}
@@ -274,29 +276,29 @@ export default function StockDetail({ data }) {
       )}
 
       {profile && (profile.description || profile.sector || profile.industry) && (
-        <section className="rounded border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800">Company Profile</h2>
+        <section className="rounded border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Company Profile</h2>
           <div className="mt-3 grid gap-4 lg:grid-cols-2">
-            {profile.description && <p className="text-sm leading-relaxed text-gray-700">{profile.description}</p>}
-            <div className="space-y-2 text-sm text-gray-600">
+            {profile.description && <p className="text-sm leading-relaxed text-gray-700 dark:text-slate-300">{profile.description}</p>}
+            <div className="space-y-2 text-sm text-gray-600 dark:text-slate-300">
               {profile.sector && (
                 <div>
-                  <span className="font-medium text-gray-700">Sector:</span> {profile.sector}
+                  <span className="font-medium text-gray-700 dark:text-white">Sector:</span> {profile.sector}
                 </div>
               )}
               {profile.industry && (
                 <div>
-                  <span className="font-medium text-gray-700">Industry:</span> {profile.industry}
+                  <span className="font-medium text-gray-700 dark:text-white">Industry:</span> {profile.industry}
                 </div>
               )}
               {profile.ceo && (
                 <div>
-                  <span className="font-medium text-gray-700">CEO:</span> {profile.ceo}
+                  <span className="font-medium text-gray-700 dark:text-white">CEO:</span> {profile.ceo}
                 </div>
               )}
               {profile.employees && (
                 <div>
-                  <span className="font-medium text-gray-700">Employees:</span> {formatNumber(profile.employees)}
+                  <span className="font-medium text-gray-700 dark:text-white">Employees:</span> {formatNumber(profile.employees)}
                 </div>
               )}
               {profile.address && (
@@ -391,9 +393,9 @@ export default function StockDetail({ data }) {
 
 function MetricCard({ label, value }) {
   return (
-    <div className="rounded border border-slate-200 p-3">
-      <div className="text-xs uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="mt-1 text-sm font-medium text-gray-800">{value}</div>
+    <div className="rounded border border-slate-200 p-3 dark:border-slate-700">
+      <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">{label}</div>
+      <div className="mt-1 text-sm font-medium text-gray-800 dark:text-white">{value}</div>
     </div>
   );
 }
