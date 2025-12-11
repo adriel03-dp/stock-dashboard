@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 const priceFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -18,7 +20,7 @@ function formatPercent(value) {
 
 export default function TrendingTabs({ list = [], onAdd, pendingId }) {
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-3">
       {list.map((item) => {
         const symbol = item.symbol ? item.symbol.toUpperCase() : item.id;
         const priceLabel = Number.isFinite(Number(item.price))
@@ -30,18 +32,25 @@ export default function TrendingTabs({ list = [], onAdd, pendingId }) {
         const disabled = !onAdd || pendingId === item.id;
 
         return (
-          <div key={item.id} className="flex items-center justify-between rounded bg-white p-3 shadow-sm">
-            <div>
-              <div className="font-semibold">
-                {symbol} — {item.name}
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ y: -3, scale: 1.005 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900"
+          >
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-900 dark:text-white">
+                {symbol} <span className="text-sm text-slate-500 dark:text-slate-400">{item.name}</span>
               </div>
               <div
-                className={`text-sm ${
+                className={`text-sm font-medium ${
                   positive == null
-                    ? "text-gray-500"
+                    ? "text-slate-500 dark:text-slate-400"
                     : positive
-                    ? "text-emerald-600"
-                    : "text-rose-600"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
                 }`}
               >
                 {priceLabel} • {changeLabel}
@@ -51,12 +60,12 @@ export default function TrendingTabs({ list = [], onAdd, pendingId }) {
               type="button"
               onClick={() => onAdd?.({ ...item, symbol })}
               disabled={disabled}
-              className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-sky-500 to-indigo-500 text-base font-semibold text-white shadow-md shadow-blue-500/30 transition disabled:opacity-50"
               aria-label={`Add ${symbol} to watchlist`}
             >
-              +
+              <span className="-translate-y-[1px] text-lg">+</span>
             </button>
-          </div>
+          </motion.div>
         );
       })}
     </div>
