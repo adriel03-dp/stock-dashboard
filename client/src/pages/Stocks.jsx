@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Navbar from "../components/Navbar";
+import { TrendingUp, TrendingDown, Activity, Zap } from "lucide-react";
+import { motion } from "framer-motion";
+import Breadcrumb from "../components/Breadcrumb";
+import PageHeader from "../components/PageHeader";
 import StocksTable from "../components/StocksTable";
+import Pagination from "../components/Pagination";
+import { LoadingMessage, ErrorMessage, SkeletonTable } from "../components/SkeletonLoaders";
+import { useToast } from "../components/Toast";
 import { api } from "../utils/api";
 
 function getStoredLimit() {
@@ -11,14 +17,19 @@ function getStoredLimit() {
 }
 
 export default function Stocks() {
+    const toast = useToast();
     const [pages, setPages] = useState([]);
     const [pageIndex, setPageIndex] = useState(0);
     const [loading, setLoading] = useState(false);
     const [loadingNext, setLoadingNext] = useState(false);
+    const [loadingOverview, setLoadingOverview] = useState(true);
     const [error, setError] = useState(null);
     const [query, setQuery] = useState("");
     const [limit, setLimit] = useState(() => getStoredLimit());
     const [sortKey, setSortKey] = useState("market-cap-desc");
+    const [itemsPerPage, setItemsPerPage] = useState(25);
+    const [displayPageIndex, setDisplayPageIndex] = useState(0);
+    const [overview, setOverview] = useState(null);
     const [filters, setFilters] = useState({
         sector: "",
         country: "",
@@ -30,6 +41,24 @@ export default function Stocks() {
         losersOnly: false,
         highVolumeOnly: false
     });
+
+    // Load market overview for highlights
+    useEffect(() => {
+        async function loadOverview() {
+            setLoadingOverview(true);
+            try {
+                const { data } = await api.get("/market/overview");
+                console.log("Market overview loaded:", data);
+                setOverview(data?.highlights || data);
+            } catch (err) {
+                console.error("Failed to load market overview", err);
+                setOverview(null);
+            } finally {
+                setLoadingOverview(false);
+            }
+        }
+        loadOverview();
+    }, []);
 
     const fetchPage = useCallback(
         async ({ cursor = null, reset = false } = {}) => {
@@ -103,6 +132,7 @@ export default function Stocks() {
         if (index === pageIndex) return;
         if (index < pages.length) {
             setPageIndex(index);
+            setDisplayPageIndex(0);
             return;
         }
 
@@ -116,6 +146,7 @@ export default function Stocks() {
         if (loadingNext) return;
         if (pageIndex + 1 < pages.length) {
             setPageIndex(pageIndex + 1);
+            setDisplayPageIndex(0);
             return;
         }
         const lastPage = pages[pages.length - 1];
@@ -126,10 +157,12 @@ export default function Stocks() {
     const goToPrev = () => {
         if (pageIndex === 0 || loadingNext) return;
         setPageIndex(pageIndex - 1);
+        setDisplayPageIndex(0);
     };
 
     const updateFilter = (field, value) => {
         setFilters((prev) => ({ ...prev, [field]: value }));
+        setDisplayPageIndex(0);
     };
 
     const filtered = useMemo(() => {
@@ -206,177 +239,243 @@ export default function Stocks() {
 
         try {
             await api.post("/watchlist", payload);
-            alert(`${it.symbol.toUpperCase()} added to watchlist`);
+            toast.success(`${it.symbol.toUpperCase()} added to StockDash Watchlist`);
         } catch (err) {
-            const message = err?.response?.status === 409
-                ? "Already in watchlist"
-                : err?.response?.data?.error || "Failed to add to watchlist";
-            alert(message);
+            if (err?.response?.status === 409) {
+                toast.warning(`${it.symbol.toUpperCase()} is already in your StockDash Watchlist`);
+            } else {
+                toast.error(err?.response?.data?.error || "Failed to add to watchlist");
+            }
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            <Navbar onSearch={setQuery} />
-            <div className="p-6 max-w-7xl mx-auto space-y-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-semibold">Stock Market Directory</h1>
-                        <p className="text-sm text-gray-500">
-                            Showing {filtered.length.toLocaleString()} of {(currentPage.items?.length || 0).toLocaleString()} symbols · {totalLoaded.toLocaleString()} loaded overall
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
-                        <label className="flex items-center gap-2">
-                            <span className="text-xs uppercase tracking-wide text-gray-500">Rows / fetch</span>
-                            <select
-                                value={limit}
-                                onChange={(e) => setLimit(Number(e.target.value) || INITIAL_LIMIT)}
-                                className="rounded border px-2 py-1"
-                            >
-                                {[50, 100, 200, 500].map((opt) => (
-                                    <option key={opt} value={opt}>
-                                        {opt}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label className="flex items-center gap-2">
-                            <span className="text-xs uppercase tracking-wide text-gray-500">Sort by</span>
-                            <select
-                                value={sortKey}
-                                onChange={(e) => setSortKey(e.target.value)}
-                                className="rounded border px-2 py-1"
-                            >
-                                <option value="market-cap-desc">Market cap ↓</option>
-                                <option value="market-cap-asc">Market cap ↑</option>
-                                <option value="price-desc">Price ↓</option>
-                                <option value="price-asc">Price ↑</option>
-                                <option value="change-desc">% change ↓</option>
-                                <option value="change-asc">% change ↑</option>
-                                <option value="volume-desc">Volume ↓</option>
-                                <option value="volume-asc">Volume ↑</option>
-                                <option value="alphabetical">Alphabetical</option>
-                            </select>
-                        </label>
-                    </div>
+        <div className="min-h-screen bg-white dark:bg-slate-950">
+            <PageHeader
+              title="Stock Market Directory"
+              description={`Browse ${filtered.length.toLocaleString()} stocks with real-time data`}
+              icon={TrendingUp}
+              breadcrumb={<Breadcrumb />}
+            />
+            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+              <div className="space-y-6">
+                {/* Market Highlights */}
+                {loadingOverview ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="h-24 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+                    ))}
+                  </div>
+                ) : overview ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+                  >
+                    <MarketHighlight
+                      title="Top Gainers"
+                      icon={TrendingUp}
+                      items={overview.topGainers || []}
+                      color="emerald"
+                    />
+                    <MarketHighlight
+                      title="Top Losers"
+                      icon={TrendingDown}
+                      items={overview.topLosers || []}
+                      color="rose"
+                    />
+                    <MarketHighlight
+                      title="Most Active"
+                      icon={Activity}
+                      items={overview.mostActive || []}
+                      color="blue"
+                    />
+                    <MarketHighlight
+                      title="Largest by Cap"
+                      icon={Zap}
+                      items={overview.topMarketCap || []}
+                      color="amber"
+                    />
+                  </motion.div>
+                ) : null}
+
+                {/* Main Content */}
+                <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <label className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Rows / fetch</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => setLimit(Number(e.target.value) || 100)}
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  >
+                    {[50, 100, 200, 500].map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Sort by</span>
+                  <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value)}
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="market-cap-desc">Market cap ↓</option>
+                    <option value="market-cap-asc">Market cap ↑</option>
+                    <option value="price-desc">Price ↓</option>
+                    <option value="price-asc">Price ↑</option>
+                    <option value="change-desc">% change ↓</option>
+                    <option value="change-asc">% change ↑</option>
+                    <option value="volume-desc">Volume ↓</option>
+                    <option value="volume-asc">Volume ↑</option>
+                    <option value="alphabetical">Alphabetical</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Filters</h2>
+                <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">Sector</label>
+                    <input
+                      value={filters.sector}
+                      onChange={(e) => updateFilter("sector", e.target.value)}
+                      placeholder="e.g. Technology"
+                      className="rounded border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">Country</label>
+                    <input
+                      value={filters.country}
+                      onChange={(e) => updateFilter("country", e.target.value)}
+                      placeholder="e.g. US"
+                      className="rounded border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">Market Cap (min)</label>
+                    <input
+                      value={filters.marketCapMin}
+                      onChange={(e) => updateFilter("marketCapMin", e.target.value)}
+                      placeholder="e.g. 1000000000"
+                      className="rounded border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">Market Cap (max)</label>
+                    <input
+                      value={filters.marketCapMax}
+                      onChange={(e) => updateFilter("marketCapMax", e.target.value)}
+                      placeholder="e.g. 50000000000"
+                      className="rounded border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">Price (min)</label>
+                    <input
+                      value={filters.priceMin}
+                      onChange={(e) => updateFilter("priceMin", e.target.value)}
+                      placeholder="e.g. 10"
+                      className="rounded border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">Price (max)</label>
+                    <input
+                      value={filters.priceMax}
+                      onChange={(e) => updateFilter("priceMax", e.target.value)}
+                      placeholder="e.g. 300"
+                      className="rounded border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={filters.gainersOnly}
+                      onChange={(e) => updateFilter("gainersOnly", e.target.checked)}
+                    />
+                    Gainers only
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={filters.losersOnly}
+                      onChange={(e) => updateFilter("losersOnly", e.target.checked)}
+                    />
+                    Losers only
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={filters.highVolumeOnly}
+                      onChange={(e) => updateFilter("highVolumeOnly", e.target.checked)}
+                    />
+                    High volume (&gt; 1M)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFilters({
+                        sector: "",
+                        country: "",
+                        marketCapMin: "",
+                        marketCapMax: "",
+                        priceMin: "",
+                        priceMax: "",
+                        gainersOnly: false,
+                        losersOnly: false,
+                        highVolumeOnly: false
+                      })
+                    }
+                    className="mt-2 w-fit rounded border px-3 py-2 text-sm"
+                  >
+                    Clear filters
+                  </button>
                 </div>
+              </div>
 
-                <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Filters</h2>
-                    <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-medium text-gray-500">Sector</label>
-                            <input
-                                value={filters.sector}
-                                onChange={(e) => updateFilter("sector", e.target.value)}
-                                placeholder="e.g. Technology"
-                                className="rounded border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-medium text-gray-500">Country</label>
-                            <input
-                                value={filters.country}
-                                onChange={(e) => updateFilter("country", e.target.value)}
-                                placeholder="e.g. US"
-                                className="rounded border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-medium text-gray-500">Market Cap (min)</label>
-                            <input
-                                value={filters.marketCapMin}
-                                onChange={(e) => updateFilter("marketCapMin", e.target.value)}
-                                placeholder="e.g. 1000000000"
-                                className="rounded border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-medium text-gray-500">Market Cap (max)</label>
-                            <input
-                                value={filters.marketCapMax}
-                                onChange={(e) => updateFilter("marketCapMax", e.target.value)}
-                                placeholder="e.g. 50000000000"
-                                className="rounded border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-medium text-gray-500">Price (min)</label>
-                            <input
-                                value={filters.priceMin}
-                                onChange={(e) => updateFilter("priceMin", e.target.value)}
-                                placeholder="e.g. 10"
-                                className="rounded border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-medium text-gray-500">Price (max)</label>
-                            <input
-                                value={filters.priceMax}
-                                onChange={(e) => updateFilter("priceMax", e.target.value)}
-                                placeholder="e.g. 300"
-                                className="rounded border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={filters.gainersOnly}
-                                onChange={(e) => updateFilter("gainersOnly", e.target.checked)}
-                            />
-                            Gainers only
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={filters.losersOnly}
-                                onChange={(e) => updateFilter("losersOnly", e.target.checked)}
-                            />
-                            Losers only
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={filters.highVolumeOnly}
-                                onChange={(e) => updateFilter("highVolumeOnly", e.target.checked)}
-                            />
-                            High volume (&gt; 1M)
-                        </label>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setFilters({
-                                    sector: "",
-                                    country: "",
-                                    marketCapMin: "",
-                                    marketCapMax: "",
-                                    priceMin: "",
-                                    priceMax: "",
-                                    gainersOnly: false,
-                                    losersOnly: false,
-                                    highVolumeOnly: false
-                                })
-                            }
-                            className="mt-2 w-fit rounded border px-3 py-2 text-sm"
-                        >
-                            Clear filters
-                        </button>
-                    </div>
-                </div>
+              {error && <ErrorMessage message={error} />}
 
-                {error && (
-                    <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-                        {error}
-                    </div>
-                )}
+              {loading && !totalLoaded && <LoadingMessage />}
 
-                {loading && !totalLoaded && (
-                    <div className="text-sm text-gray-500">Loading {limit.toLocaleString()} symbols…</div>
-                )}
+              {/* Client-side pagination controls */}
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <label className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Items per page</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value) || 25);
+                      setDisplayPageIndex(0);
+                    }}
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  >
+                    {[10, 15, 25, 50].map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-                <StocksTable
-                    items={filtered.map((s) => ({
+              {/* Display paginated items */}
+              {(() => {
+                const totalFilteredItems = filtered.length;
+                const totalDisplayPages = Math.ceil(totalFilteredItems / itemsPerPage);
+                const startIdx = displayPageIndex * itemsPerPage;
+                const endIdx = startIdx + itemsPerPage;
+                const displayItems = filtered.slice(startIdx, endIdx);
+
+                return (
+                  <>
+                    <StocksTable
+                      items={displayItems.map((s) => ({
                         id: `${s.symbol}-${s.exchange ?? ""}`,
                         symbol: s.symbol,
                         name: s.name,
@@ -394,51 +493,145 @@ export default function Stocks() {
                         sector: s.sector,
                         country: s.country,
                         sparkline: s.sparkline || null
-                    }))}
-                    onToggleWatch={add}
-                />
+                      }))}
+                      onToggleWatch={add}
+                    />
 
-                <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-                    <div className="text-sm text-gray-600">
-                        Page {pages.length ? pageIndex + 1 : 0} of {pages.length || 0}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={goToPrev}
-                            disabled={pageIndex === 0 || loadingNext}
-                            className="rounded border px-3 py-2 text-sm disabled:opacity-50"
-                        >
-                            Previous
-                        </button>
-                        <div className="flex items-center gap-1">
-                            {pages.map((_, idx) => (
-                                <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => goToPage(idx)}
-                                    className={`h-8 w-8 rounded border text-sm ${
-                                        idx === pageIndex ? "bg-blue-600 text-white border-blue-600" : "bg-white"
-                                    }`}
-                                    disabled={loadingNext && idx === pages.length - 1 && hasNextPage}
-                                >
-                                    {idx + 1}
-                                </button>
-                            ))}
-                            {hasNextPage && (
-                                <button
-                                    type="button"
-                                    onClick={goToNext}
-                                    disabled={loadingNext}
-                                    className="h-8 rounded border px-3 text-sm disabled:opacity-50"
-                                >
-                                    {loadingNext ? "Loading…" : "Next"}
-                                </button>
-                            )}
+                    {/* Display pagination info and controls */}
+                    {totalDisplayPages > 1 && (
+                      <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+                        <div className="text-sm text-gray-600 dark:text-slate-400">
+                          Showing {startIdx + 1} to {Math.min(endIdx, totalFilteredItems)} of {totalFilteredItems.toLocaleString()} items
+                          {totalDisplayPages > 1 && ` • Page ${displayPageIndex + 1} of ${totalDisplayPages}`}
                         </div>
-                    </div>
-                </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDisplayPageIndex(Math.max(0, displayPageIndex - 1))}
+                            disabled={displayPageIndex === 0}
+                            className="rounded border border-slate-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-slate-600"
+                          >
+                            Previous
+                          </button>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: totalDisplayPages }, (_, i) => i).map((idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setDisplayPageIndex(idx)}
+                                className={`h-8 w-8 rounded border text-sm transition-colors ${
+                                  idx === displayPageIndex
+                                    ? "border-blue-600 bg-blue-600 text-white"
+                                    : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                }`}
+                              >
+                                {idx + 1}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setDisplayPageIndex(Math.min(totalDisplayPages - 1, displayPageIndex + 1))}
+                            disabled={displayPageIndex === totalDisplayPages - 1}
+                            className="rounded border border-slate-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-slate-600"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+              </div>
             </div>
         </div>
+    </div>
     );
 }
+
+function MarketHighlight({ title, icon, items = [], color = "blue" }) {
+  const Icon = icon;
+  const colors = {
+    emerald: "emerald",
+    rose: "rose",
+    blue: "blue",
+    amber: "amber"
+  };
+
+  const colorClass = colors[color] || colors.blue;
+
+  const bgClass = {
+    emerald: "bg-emerald-50 dark:bg-emerald-900/20",
+    rose: "bg-rose-50 dark:bg-rose-900/20",
+    blue: "bg-blue-50 dark:bg-blue-900/20",
+    amber: "bg-amber-50 dark:bg-amber-900/20"
+  }[colorClass];
+
+  const textClass = {
+    emerald: "text-emerald-600 dark:text-emerald-400",
+    rose: "text-rose-600 dark:text-rose-400",
+    blue: "text-blue-600 dark:text-blue-400",
+    amber: "text-amber-600 dark:text-amber-400"
+  }[colorClass];
+
+  const borderClass = {
+    emerald: "border-emerald-200 dark:border-emerald-800",
+    rose: "border-rose-200 dark:border-rose-800",
+    blue: "border-blue-200 dark:border-blue-800",
+    amber: "border-amber-200 dark:border-amber-800"
+  }[colorClass];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`rounded-lg border ${borderClass} ${bgClass} p-4 shadow-sm`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400">
+          {title}
+        </h3>
+        <Icon className={`h-4 w-4 ${textClass}`} />
+      </div>
+      <ul className="space-y-2">
+        {items && items.length ? (
+          items.slice(0, 3).map((item, idx) => (
+            <motion.li
+              key={item.symbol || idx}
+              whileHover={{ x: 2 }}
+              className="flex items-center justify-between rounded-lg bg-white/50 p-2.5 transition dark:bg-slate-800/30"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-slate-900 dark:text-white">
+                  {item.symbol}
+                </div>
+                <div className="truncate text-xs text-slate-600 dark:text-slate-400">
+                  {item.name}
+                </div>
+              </div>
+              <div className="flex-shrink-0 text-right">
+                <div className={`text-xs font-bold ${textClass}`}>
+                  {formatPercent(item.changePercent || item.change)}
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">
+                  ${Number(item.price || 0).toFixed(2)}
+                </div>
+              </div>
+            </motion.li>
+          ))
+        ) : (
+          <li className="text-xs text-slate-500 dark:text-slate-400">No data available</li>
+        )}
+      </ul>
+    </motion.div>
+  );
+}
+
+function formatPercent(value) {
+  if (value == null) return "—";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "—";
+  return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
+}
+          

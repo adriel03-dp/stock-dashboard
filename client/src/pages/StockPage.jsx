@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import Navbar from "../components/Navbar";
+import { TrendingUp } from "lucide-react";
+import Breadcrumb from "../components/Breadcrumb";
+import PageHeader from "../components/PageHeader";
 import StockDetail from "../components/StockDetail";
+import { LoadingMessage, ErrorMessage } from "../components/SkeletonLoaders";
 import { api } from "../utils/api";
 
 export default function StockPage() {
@@ -38,17 +41,16 @@ export default function StockPage() {
   }, [symbol]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <div className="mx-auto w-full max-w-6xl p-6">
-        {loading && (
-          <div className="rounded border border-slate-200 bg-white p-4 text-sm text-gray-500 shadow">Loading stock data…</div>
-        )}
-        {!loading && error && (
-          <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-600 shadow">{error}</div>
-        )}
-        {!loading && !error && data && <StockDetail data={data} />}
-      </div>
+    <div className="min-h-screen bg-white dark:bg-slate-950">
+      <PageHeader
+        title={symbol ? symbol.toUpperCase() : "Stock Detail"}
+        description="Real-time stock information and analysis"
+        icon={TrendingUp}
+        breadcrumb={<Breadcrumb />}
+      />
+      {loading && <LoadingMessage />}
+      {!loading && error && <ErrorMessage message={error} />}
+      {!loading && !error && data && <StockDetail data={data} />}
     </div>
   );
 }
