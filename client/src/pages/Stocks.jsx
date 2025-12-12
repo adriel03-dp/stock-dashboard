@@ -301,13 +301,13 @@ export default function Stocks() {
 
                 {/* Main Content */}
                 <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <label className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Rows / fetch</span>
+              <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                <label className="flex items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400">Rows / fetch</span>
                   <select
                     value={limit}
                     onChange={(e) => setLimit(Number(e.target.value) || 100)}
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:hover:border-slate-500"
                   >
                     {[50, 100, 200, 500].map((opt) => (
                       <option key={opt} value={opt}>
@@ -316,12 +316,12 @@ export default function Stocks() {
                     ))}
                   </select>
                 </label>
-                <label className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Sort by</span>
+                <label className="flex items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400">Sort by</span>
                   <select
                     value={sortKey}
                     onChange={(e) => setSortKey(e.target.value)}
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:hover:border-slate-500"
                   >
                     <option value="market-cap-desc">Market cap ↓</option>
                     <option value="market-cap-asc">Market cap ↑</option>
@@ -336,61 +336,61 @@ export default function Stocks() {
                 </label>
               </div>
 
-              <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Filters</h2>
+              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400">Filters</h2>
                 <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Sector</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Sector</label>
                     <input
                       value={filters.sector}
                       onChange={(e) => updateFilter("sector", e.target.value)}
                       placeholder="e.g. Technology"
-                      className="rounded border px-3 py-2 text-sm"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Country</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Country</label>
                     <input
                       value={filters.country}
                       onChange={(e) => updateFilter("country", e.target.value)}
                       placeholder="e.g. US"
-                      className="rounded border px-3 py-2 text-sm"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Market Cap (min)</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Market Cap (min)</label>
                     <input
                       value={filters.marketCapMin}
                       onChange={(e) => updateFilter("marketCapMin", e.target.value)}
                       placeholder="e.g. 1000000000"
-                      className="rounded border px-3 py-2 text-sm"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Market Cap (max)</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Market Cap (max)</label>
                     <input
                       value={filters.marketCapMax}
                       onChange={(e) => updateFilter("marketCapMax", e.target.value)}
                       placeholder="e.g. 50000000000"
-                      className="rounded border px-3 py-2 text-sm"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Price (min)</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Price (min)</label>
                     <input
                       value={filters.priceMin}
                       onChange={(e) => updateFilter("priceMin", e.target.value)}
                       placeholder="e.g. 10"
-                      className="rounded border px-3 py-2 text-sm"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Price (max)</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Price (max)</label>
                     <input
                       value={filters.priceMax}
                       onChange={(e) => updateFilter("priceMax", e.target.value)}
                       placeholder="e.g. 300"
-                      className="rounded border px-3 py-2 text-sm"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
                     />
                   </div>
                   <label className="flex items-center gap-2 text-sm">
@@ -444,16 +444,16 @@ export default function Stocks() {
               {loading && !totalLoaded && <LoadingMessage />}
 
               {/* Client-side pagination controls */}
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <label className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Items per page</span>
+              <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                <label className="flex items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400">Items per page</span>
                   <select
                     value={itemsPerPage}
                     onChange={(e) => {
                       setItemsPerPage(Number(e.target.value) || 25);
                       setDisplayPageIndex(0);
                     }}
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:hover:border-slate-500"
                   >
                     {[10, 15, 25, 50].map((opt) => (
                       <option key={opt} value={opt}>

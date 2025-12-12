@@ -1,19 +1,19 @@
 import React from "react";
-import { Eye } from "lucide-react";
+import { Settings as SettingsIcon } from "lucide-react";
 import Breadcrumb from "../components/Breadcrumb";
 import PageHeader from "../components/PageHeader";
-import Watchlist from "../components/Watchlist";
+import Settings from "../components/Settings";
 
-export default function WatchlistPage() {
+export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950">
       <PageHeader
-        title="Watchlist"
-        description="Track stocks and assets you want to monitor"
-        icon={Eye}
+        title="Settings"
+        description="Customize your dashboard and preferences"
+        icon={SettingsIcon}
         breadcrumb={<Breadcrumb />}
       />
-      <Watchlist />
+      <Settings />
     </div>
   );
 }
