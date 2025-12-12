@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
-import Navbar from "../components/Navbar";
+import { Newspaper } from "lucide-react";
+import Breadcrumb from "../components/Breadcrumb";
+import PageHeader from "../components/PageHeader";
 import NewsList from "../components/NewsList";
+import { LoadingMessage, ErrorMessage } from "../components/SkeletonLoaders";
 import { api } from "../utils/api";
 
 const CATEGORY_OPTIONS = [
@@ -52,35 +55,34 @@ export default function NewsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <div className="p-6 mx-auto flex w-full max-w-7xl flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Market News</h1>
-            <p className="text-sm text-gray-500">Powered by Massive real-time headlines</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            {CATEGORY_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setCategory(option.value)}
-                className={`rounded-full px-3 py-1 font-medium transition ${
-                  category === option.value
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-600 shadow-sm hover:bg-blue-50"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+    <div className="min-h-screen bg-white dark:bg-slate-950">
+      <PageHeader
+        title="Market News"
+        description="Real-time headlines and market analysis"
+        icon={Newspaper}
+        breadcrumb={<Breadcrumb />}
+      />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {CATEGORY_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setCategory(option.value)}
+              className={`rounded-full px-3 py-1 font-medium transition ${
+                category === option.value
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-600 shadow-sm hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-2 rounded border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
+        <form onSubmit={onSubmit} className="flex flex-col gap-2 rounded border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center">
           <div className="flex-1">
-            <label className="text-xs uppercase tracking-wide text-gray-500" htmlFor="news-search">
+            <label className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400" htmlFor="news-search">
               Keyword
             </label>
             <input
@@ -88,11 +90,11 @@ export default function NewsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="e.g. inflation, earnings"
-              className="mt-1 w-full rounded border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+              className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             />
           </div>
           <div className="flex-1">
-            <label className="text-xs uppercase tracking-wide text-gray-500" htmlFor="news-symbols">
+            <label className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400" htmlFor="news-symbols">
               Symbols
             </label>
             <input
@@ -100,7 +102,7 @@ export default function NewsPage() {
               value={symbols}
               onChange={(e) => setSymbols(e.target.value.toUpperCase())}
               placeholder="AAPL, NVDA"
-              className="mt-1 w-full rounded border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+              className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             />
           </div>
           <div className="pt-4 sm:pt-0">
@@ -113,18 +115,8 @@ export default function NewsPage() {
           </div>
         </form>
 
-        {loading && (
-          <div className="rounded border border-slate-200 bg-white p-4 text-sm text-gray-500 shadow">
-            Loading headlines…
-          </div>
-        )}
-
-        {!loading && error && (
-          <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-600 shadow">
-            {error}
-          </div>
-        )}
-
+        {loading && <LoadingMessage />}
+        {!loading && error && <ErrorMessage message={error} />}
         {!loading && !error && <NewsList items={items} />}
       </div>
     </div>
