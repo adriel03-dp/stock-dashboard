@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import Navbar from "../components/Navbar";
+import { TrendingUp } from "lucide-react";
+import Breadcrumb from "../components/Breadcrumb";
+import PageHeader from "../components/PageHeader";
 import MarketMetricCard from "../components/MarketMetricCard";
 import Heatmap from "../components/Heatmap";
 import TrendingTabs from "../components/TrendingTabs";
+import { LoadingMessage, ErrorMessage, SkeletonCard } from "../components/SkeletonLoaders";
+import { useToast } from "../components/Toast";
 import { api } from "../utils/api";
 import usePollingFetch from "../hooks/usePollingFetch";
 
@@ -24,6 +28,7 @@ function getStoredAutoRefresh() {
 }
 
 export default function Dashboard() {
+  const toast = useToast();
   const [refreshSeconds, setRefreshSeconds] = useState(() => getStoredAutoRefresh());
   const refreshIntervalMs = Math.max(refreshSeconds, MIN_REFRESH_SECONDS) * 1000;
   const overviewPollMs = Math.max(refreshIntervalMs, 30000);
@@ -146,12 +151,13 @@ export default function Dashboard() {
     setPendingId(item.id || symbol);
     try {
       await api.post("/watchlist", payload);
-      alert(`${symbol} added to watchlist`);
+      toast.success(`${symbol} added to StockDash Watchlist`);
     } catch (err) {
-      const message = err?.response?.status === 409
-        ? "Already in watchlist"
-        : err?.response?.data?.error || "Failed to add to watchlist";
-      alert(message);
+      if (err?.response?.status === 409) {
+        toast.warning(`${symbol} is already in your StockDash Watchlist`);
+      } else {
+        toast.error(err?.response?.data?.error || "Failed to add to watchlist");
+      }
     } finally {
       setPendingId(null);
     }
@@ -207,8 +213,21 @@ export default function Dashboard() {
     <div className="relative min-h-screen overflow-hidden bg-white dark:bg-slate-950">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.1),transparent_55%)] dark:bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.05),transparent_55%)]" />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.08),transparent_45%)] dark:bg-[radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.03),transparent_45%)]" />
-      <Navbar />
-      <main className="mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl">
+        <PageHeader
+          title="Market Dashboard"
+          description="Real-time market data, trends, and analytics"
+          icon={TrendingUp}
+          breadcrumb={<Breadcrumb />}
+          backgroundImages={[
+            "/stock-market.jpg",
+            "/financial-data.jpg",
+            "/screen-showing-data.jpg",
+            "/cryptocurrwncy-concept.jpg"
+          ]}
+          cycleInterval={3000}
+        />
+
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="flex flex-col gap-8">
             <motion.section
