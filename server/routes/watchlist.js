@@ -1,6 +1,6 @@
 import express from "express";
 import WatchItem from "../models/WatchItem.js";
-import { fetchCoinMarket } from "../services/coinGeckoService.js";
+import { fetchCoinMarket } from "../services/binanceService.js";
 import { fetchMassiveStockSummary } from "../utils/stockData.js";
 
 const router = express.Router();

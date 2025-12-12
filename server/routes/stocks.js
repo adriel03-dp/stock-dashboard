@@ -1,5 +1,6 @@
 import express from "express";
 import { massiveService } from "../services/massiveService.js";
+import { generateMockStocks, generateMockStockDetail } from "../services/mockData.js";
 
 const router = express.Router();
 
@@ -127,16 +128,18 @@ function normalizeTickerEvent(item) {
 }
 
 router.get("/", async (req, res) => {
-  if (!process.env.MASSIVE_API_KEY) {
-    return res.status(400).json({ error: "MASSIVE_API_KEY not configured" });
-  }
-
   try {
     const limit = Math.min(Math.max(Number(req.query.limit ?? 100), 1), 500);
     const cursor = req.query.cursor;
     const search = req.query.search;
     const sector = req.query.sector;
     const country = req.query.country;
+
+    // Use mock data if API key is not configured
+    if (!process.env.MASSIVE_API_KEY) {
+      const items = generateMockStocks(limit);
+      return res.json({ items, nextCursor: null });
+    }
 
     const params = {
       market: "stocks",
@@ -230,21 +233,24 @@ router.get("/", async (req, res) => {
     });
   } catch (err) {
     console.error("stocks error:", err?.details || err?.message || err);
-    res.status(err.status || 500).json({ error: "Failed to fetch stocks", details: err.message });
+    // Fall back to mock data on error
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 100), 1), 500);
+    const items = generateMockStocks(limit);
+    return res.json({ items, nextCursor: null });
   }
 });
 
 router.get("/:symbol", async (req, res) => {
-  if (!process.env.MASSIVE_API_KEY) {
-    return res.status(400).json({ error: "MASSIVE_API_KEY not configured" });
-  }
-
   const symbol = String(req.params.symbol || "").trim().toUpperCase();
   if (!symbol) {
     return res.status(400).json({ error: "Symbol is required" });
   }
 
   try {
+    // Use mock data if API key is not configured
+    if (!process.env.MASSIVE_API_KEY) {
+      return res.json(generateMockStockDetail(symbol));
+    }
     const [quoteResp, snapshotResp, detailsResp, relatedResp, dividendsResp, eventsResp] = await Promise.all([
       massiveService.getStockQuote(symbol).catch(() => null),
       massiveService.getStockSnapshots({ tickers: symbol }).catch(() => null),
