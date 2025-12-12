@@ -50,7 +50,7 @@ export default function PageHeader({
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="relative mb-8 rounded-xl border border-slate-200/80 overflow-hidden px-6 py-8 dark:border-slate-700/80 shadow-sm dark:shadow-none"
+      className="relative mb-0 rounded-xl border border-slate-200/80 overflow-hidden px-6 py-8 dark:border-slate-700/80 shadow-sm dark:shadow-none w-full"
     >
       {/* Smooth background image transition with Ken Burns effect */}
       <motion.div
@@ -71,7 +71,7 @@ export default function PageHeader({
           backgroundImage: displayImage ? `url(${displayImage})` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
+          backgroundRepeat: 'no-repeat',
         }}
       />
       
