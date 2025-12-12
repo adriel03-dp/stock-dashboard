@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../utils/api";
+import { useAuth } from "../contexts/AuthContext";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -31,6 +32,7 @@ function calculateCostBasis(holdings = []) {
 }
 
 export default function Portfolio({ items = [] }) {
+  const { token } = useAuth();
   const [values, setValues] = useState({});
 
   useEffect(() => {
@@ -43,34 +45,21 @@ export default function Portfolio({ items = [] }) {
       };
     }
 
-    async function loadValues() {
-      const next = {};
-      await Promise.all(
-        items.map(async (portfolio) => {
-          if (!portfolio?._id) return;
-          try {
-            const { data } = await api.get(`/portfolio/${portfolio._id}/value`);
-            const value = Number(data?.value);
-            next[portfolio._id] = {
-              value: Number.isFinite(value) ? value : null
-            };
-          } catch (err) {
-            next[portfolio._id] = {
-              error: err?.response?.data?.error || "Failed to load value"
-            };
-          }
-        })
-      );
+    // Simple calculation without fetching current prices
+    const next = {};
+    items.forEach((portfolio) => {
+      if (!portfolio?._id) return;
+      next[portfolio._id] = {
+        value: null
+      };
+    });
 
-      if (!cancelled) setValues(next);
-    }
-
-    loadValues();
+    if (!cancelled) setValues(next);
 
     return () => {
       cancelled = true;
     };
-  }, [items]);
+  }, [items, token]);
 
   if (!items.length) {
     return (
@@ -126,24 +115,22 @@ function PortfolioValueDisplay({ holdings = [], valueEntry }) {
   const hasError = Boolean(valueEntry?.error);
   const value = valueEntry?.value;
   const isValueReady = value != null && !Number.isNaN(value);
-  const profitLoss = isValueReady ? value - costBasis : null;
-  const plClass = profitLoss == null ? "text-slate-500 dark:text-slate-400" : profitLoss >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
 
   return (
     <div className="space-y-1 text-right">
-      <div className="text-sm font-semibold text-slate-900 dark:text-white">
-        Value: {hasError ? (
-          <span className="text-sm text-rose-600 dark:text-rose-400">{valueEntry.error}</span>
-        ) : isValueReady ? (
-          formatCurrency(value)
-        ) : (
-          <span className="text-sm text-slate-500 dark:text-slate-400">Loading…</span>
-        )}
+      <div className="text-sm text-slate-600 dark:text-slate-400">
+        Cost basis: {formatCurrency(costBasis)}
       </div>
-      <div className={`text-xs font-semibold ${plClass}`}>
-        P/L: {profitLoss == null ? "—" : formatSignedCurrency(profitLoss)}
-      </div>
-      <div className="text-xs text-slate-400 dark:text-slate-600">Cost basis: {formatCurrency(costBasis)}</div>
+      {isValueReady && (
+        <>
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">
+            Value: {formatCurrency(value)}
+          </div>
+          <div className={`text-xs font-semibold ${value >= costBasis ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+            P/L: {formatSignedCurrency(value - costBasis)}
+          </div>
+        </>
+      )}
     </div>
   );
 }
