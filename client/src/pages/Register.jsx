@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock, User, AlertCircle, Loader, CheckCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../components/Toast";
+import "./Register.css";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -61,8 +62,9 @@ export default function Register() {
   ) : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="register-container min-h-screen flex items-center justify-center p-4">
+      <div className="register-overlay"></div>
+      <div className="w-full max-w-md register-content">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
@@ -89,7 +91,7 @@ export default function Register() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="........@gmail.com"
                 className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 dark:bg-slate-700 dark:text-white transition-all ${
                   errors.email
                     ? "border-red-500 focus:ring-red-500"
@@ -116,7 +118,7 @@ export default function Register() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="johndoe"
+                placeholder="__username__"
                 className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 dark:bg-slate-700 dark:text-white transition-all ${
                   errors.username
                     ? "border-red-500 focus:ring-red-500"
@@ -249,13 +251,6 @@ export default function Register() {
             Sign In
           </Link>
         </form>
-
-        {/* Demo info */}
-        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            <strong>Demo account:</strong> Create a test account with any email and password. Your data will be securely stored.
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -1,0 +1,442 @@
+/* Register Page Background and Animations */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+.register-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background-image: url('/signup_bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.register-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.2) 0%, transparent 50%);
+  animation: gradientShift 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.register-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75), rgba(139, 92, 246, 0.65));
+  backdrop-filter: blur(10px);
+  animation: overlayFade 1.2s ease-out;
+}
+
+.register-content {
+  position: relative;
+  z-index: 10;
+  animation: slideUpFade 0.8s ease-out;
+  perspective: 1000px;
+}
+
+/* Enhanced Form Styling */
+.register-content form {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.register-content form::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+  animation: shimmer 3s infinite;
+  pointer-events: none;
+}
+
+.register-content form::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid;
+  border-image: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.5)) 1;
+  animation: borderGlow 3s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* Enhanced Typography */
+.register-content h1 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #0f172a 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleGlow 3s ease-in-out infinite;
+}
+
+.register-content p {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  animation: fadeInScale 0.8s ease-out 0.2s both;
+}
+
+/* Enhanced Label Styling */
+.register-content label {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  font-size: 0.875rem;
+  letter-spacing: 0.4px;
+  text-transform: capitalize;
+  background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+  animation: labelFloat 2s ease-in-out infinite;
+}
+
+/* Premium Input Styling */
+.register-content input {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(248, 250, 252, 0.5));
+  border: 1.5px solid rgba(226, 232, 240, 0.6);
+  position: relative;
+}
+
+.register-content input::placeholder {
+  color: #cbd5e1;
+  font-weight: 400;
+  animation: placeholderFade 2s ease-in-out infinite;
+}
+
+.register-content div:has(> input) {
+  position: relative;
+}
+
+.register-content div:has(> input)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 0.5rem;
+  padding: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.5), transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: borderFlow 3s linear infinite;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.register-content input:focus {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.8));
+  border: 1.5px solid rgba(167, 139, 250, 0.6);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1), 
+              inset 0 1px 2px rgba(0, 0, 0, 0.05),
+              0 0 20px rgba(167, 139, 250, 0.2);
+  animation: inputPulse 0.6s ease-out;
+}
+
+/* Premium Button Styling */
+.register-content button[type="submit"] {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  color: #ffffff;
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 50%, #d946ef 100%);
+  box-shadow: 0 10px 30px rgba(167, 139, 250, 0.35);
+  border: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.register-content button[type="submit"]:not(:disabled):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(167, 139, 250, 0.5);
+}
+
+.register-content button[type="submit"]:not(:disabled):active {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(167, 139, 250, 0.35);
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes overlayFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Link Styling */
+.register-content a {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 50%, #d946ef 100%);
+  color: #ffffff;
+  border: 2px solid rgba(167, 139, 250, 0.8);
+  box-shadow: 0 8px 20px rgba(167, 139, 250, 0.3);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.register-content a:hover {
+  background: linear-gradient(135deg, #c084fc 0%, #d946ef 50%, #e879f9 100%);
+  border: 2px solid rgba(167, 139, 250, 1);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(167, 139, 250, 0.5);
+}
+
+/* Divider Styling */
+.register-content .relative:has(.border-t) {
+  margin: 2rem 0;
+}
+
+.register-content .relative:has(.border-t) span {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* Error and Success Message Styling */
+.register-content p[className*="text-red"] {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.2px;
+}
+
+/* Password Strength Indicator */
+.register-content div[className*="bg-"] {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes overlayFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Add subtle animation to form elements */
+.register-content form {
+  animation: formBounce 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes formBounce {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Icon animations */
+.register-content .flex.items-center.justify-center {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Form field animations */
+.register-content form > div {
+  animation: fieldSlideIn 0.6s ease-out backwards;
+}
+
+.register-content form > div:nth-child(1) { animation-delay: 0.1s; }
+.register-content form > div:nth-child(2) { animation-delay: 0.2s; }
+.register-content form > div:nth-child(3) { animation-delay: 0.3s; }
+.register-content form > div:nth-child(4) { animation-delay: 0.4s; }
+.register-content form > div:nth-child(5) { animation-delay: 0.5s; }
+.register-content form > div:nth-child(6) { animation-delay: 0.6s; }
+
+@keyframes fieldSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px) rotateZ(-3deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) rotateZ(0deg);
+  }
+}
+
+/* Icon and Logo Animations */
+.register-content .flex.items-center.justify-center {
+  animation: logoFloat 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.05);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    opacity: 0;
+    box-shadow: 0 0 0 rgba(167, 139, 250, 0);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 30px rgba(167, 139, 250, 0.5);
+  }
+}
+
+@keyframes titleGlow {
+  0%, 100% {
+    text-shadow: 0 0 0 rgba(167, 139, 250, 0);
+    filter: drop-shadow(0 0 0px rgba(167, 139, 250, 0));
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(167, 139, 250, 0.5);
+    filter: drop-shadow(0 0 15px rgba(167, 139, 250, 0.3));
+  }
+}
+
+@keyframes labelFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes placeholderFade {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes borderFlow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes buttonFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes rippleEffect {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes linkShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .register-container {
+    background-attachment: scroll;
+  }
+
+  .register-content form {
+    backdrop-filter: blur(15px);
+  }
+
+  .register-content .flex.items-center.justify-center {
+    animation: logoFloat 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
