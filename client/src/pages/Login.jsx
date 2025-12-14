@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock, AlertCircle, Loader } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../components/Toast";
+import "./Login.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -29,8 +30,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="login-container min-h-screen flex items-center justify-center p-4">
+      <div className="login-overlay"></div>
+      <div className="w-full max-w-md login-content">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
@@ -57,7 +59,7 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="____@gmail.com"
                 className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                 required
               />
@@ -75,7 +77,7 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="password"
                 className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                 required
               />
@@ -116,13 +118,6 @@ export default function Login() {
             Create Account
           </Link>
         </form>
-
-        {/* Demo info */}
-        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            <strong>Demo account:</strong> Try with any email and password. They'll be securely stored in our database.
-          </p>
-        </div>
       </div>
     </div>
   );
