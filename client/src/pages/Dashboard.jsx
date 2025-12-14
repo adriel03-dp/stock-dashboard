@@ -210,9 +210,9 @@ export default function Dashboard() {
   }, [overview]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-white dark:bg-slate-950">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.1),transparent_55%)] dark:bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.05),transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.08),transparent_45%)] dark:bg-[radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.03),transparent_45%)]" />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.15),transparent_55%)] dark:bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.08),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.12),transparent_45%)] dark:bg-[radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.05),transparent_45%)]" />
       <main className="mx-auto w-full max-w-7xl">
         <PageHeader
           title="Market Dashboard"

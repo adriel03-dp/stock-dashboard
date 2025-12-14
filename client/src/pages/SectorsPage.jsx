@@ -81,14 +81,17 @@ export default function SectorsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_0%,rgba(139,92,246,0.15),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_100%,rgba(59,130,246,0.12),transparent_45%)]" />
+      <main className="mx-auto w-full max-w-7xl">
       <PageHeader
         title="Sector Performance"
         description={`Tracking ${sectors.length} sectors across the market`}
         icon={Layers}
         breadcrumb={<Breadcrumb />}
       />
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <div className="px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -292,6 +295,7 @@ export default function SectorsPage() {
           )}
         </div>
       </div>
+      </main>
     </div>
   );
 }

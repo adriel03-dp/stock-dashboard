@@ -250,60 +250,64 @@ export default function Stocks() {
     };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-slate-950">
-            <PageHeader
-              title="Stock Market Directory"
-              description={`Browse ${filtered.length.toLocaleString()} stocks with real-time data`}
-              icon={TrendingUp}
-              breadcrumb={<Breadcrumb />}
-            />
-            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-              <div className="space-y-6">
-                {/* Market Highlights */}
-                {loadingOverview ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {[...Array(4)].map((_, i) => (
-                      <div key={i} className="h-24 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-                    ))}
-                  </div>
-                ) : overview ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-                  >
-                    <MarketHighlight
-                      title="Top Gainers"
-                      icon={TrendingUp}
-                      items={overview.topGainers || []}
-                      color="emerald"
-                    />
-                    <MarketHighlight
-                      title="Top Losers"
-                      icon={TrendingDown}
-                      items={overview.topLosers || []}
-                      color="rose"
-                    />
-                    <MarketHighlight
-                      title="Most Active"
-                      icon={Activity}
-                      items={overview.mostActive || []}
-                      color="blue"
-                    />
-                    <MarketHighlight
-                      title="Largest by Cap"
-                      icon={Zap}
-                      items={overview.topMarketCap || []}
-                      color="amber"
-                    />
-                  </motion.div>
-                ) : null}
+        <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.15),transparent_55%)]" />
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_100%,rgba(168,85,247,0.12),transparent_45%)]" />
+            <main className="mx-auto w-full max-w-7xl">
+                <PageHeader
+                    title="Stock Market Directory"
+                    description={`Browse ${filtered.length.toLocaleString()} stocks with real-time data`}
+                    icon={TrendingUp}
+                    breadcrumb={<Breadcrumb />}
+                />
+                <div className="px-4 py-8 sm:px-6">
+                          <div className="space-y-6">
+                        {/* Market Highlights */}
+                        {loadingOverview ? (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                                {[...Array(4)].map((_, i) => (
+                                    <div key={i} className="h-24 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+                                ))}
+                            </div>
+                        ) : overview ? (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+                            >
+                                <MarketHighlight
+                                    title="Top Gainers"
+                                    icon={TrendingUp}
+                                    items={overview.topGainers || []}
+                                    color="emerald"
+                                />
+                                <MarketHighlight
+                                    title="Top Losers"
+                                    icon={TrendingDown}
+                                    items={overview.topLosers || []}
+                                    color="rose"
+                                />
+                                <MarketHighlight
+                                    title="Most Active"
+                                    icon={Activity}
+                                    items={overview.mostActive || []}
+                                    color="blue"
+                                />
+                                <MarketHighlight
+                                    title="Largest by Cap"
+                                    icon={Zap}
+                                    items={overview.topMarketCap || []}
+                                    color="amber"
+                                />
+                            </motion.div>
+                        ) : null}
 
-                {/* Main Content */}
-                <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-                <label className="flex items-center gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400">Rows / fetch</span>
+                        {/* Main Content */}
+                        <div className="space-y-4">
+                        <div className="space-y-4">
+                            <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                                <label className="flex items-center gap-3">
+                                    <span className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400">Rows / fetch</span>
                   <select
                     value={limit}
                     onChange={(e) => setLimit(Number(e.target.value) || 100)}
@@ -543,10 +547,12 @@ export default function Stocks() {
                   </>
                 );
               })()}
-              </div>
-            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </main>
         </div>
-    </div>
     );
 }
 
