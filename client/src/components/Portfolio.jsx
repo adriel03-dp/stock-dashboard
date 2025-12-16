@@ -45,12 +45,22 @@ export default function Portfolio({ items = [] }) {
       };
     }
 
-    // Simple calculation without fetching current prices
+    // Calculate portfolio values from the live prices returned by the API
     const next = {};
     items.forEach((portfolio) => {
       if (!portfolio?._id) return;
+      const holdings = Array.isArray(portfolio.holdings) ? portfolio.holdings : [];
+      
+      // Calculate total current value from holdings with live prices
+      let totalValue = 0;
+      holdings.forEach((holding) => {
+        const currentPrice = Number(holding.currentPrice) || 0;
+        const quantity = Number(holding.quantity) || 0;
+        totalValue += currentPrice * quantity;
+      });
+
       next[portfolio._id] = {
-        value: null
+        value: totalValue > 0 ? totalValue : null
       };
     });
 
@@ -91,17 +101,55 @@ export default function Portfolio({ items = [] }) {
               </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {holdings.map((holding) => (
-                <motion.div
-                  key={holding.symbol}
-                  whileHover={{ y: -3 }}
-                  className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800"
-                >
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{holding.symbol}</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Qty • {holding.quantity}</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Avg • {formatCurrency(holding.avgPrice)}</div>
-                </motion.div>
-              ))}
+              {holdings.map((holding) => {
+                const currentPrice = Number(holding.currentPrice) || Number(holding.lastPrice) || 0;
+                const avgPrice = Number(holding.avgPrice) || 0;
+                const quantity = Number(holding.quantity) || 0;
+                const currentValue = currentPrice * quantity;
+                const costValue = avgPrice * quantity;
+                const gainLoss = currentValue - costValue;
+                const gainLossPercent = costValue > 0 ? (gainLoss / costValue) * 100 : 0;
+                const isPositive = gainLoss >= 0;
+
+                return (
+                  <motion.div
+                    key={holding.symbol}
+                    whileHover={{ y: -3 }}
+                    className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-white">{holding.symbol}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Qty: {quantity}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {formatCurrency(currentPrice)}
+                        </div>
+                        <div className={`text-xs font-medium ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                          {isPositive ? "+" : ""}{gainLossPercent.toFixed(2)}%
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 border-t border-slate-200/50 pt-2 dark:border-slate-600/50">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500 dark:text-slate-400">Avg Cost:</span>
+                        <span className="text-slate-900 dark:text-white font-medium">{formatCurrency(avgPrice)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs mt-1">
+                        <span className="text-slate-500 dark:text-slate-400">Total Value:</span>
+                        <span className="text-slate-900 dark:text-white font-medium">{formatCurrency(currentValue)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs mt-1">
+                        <span className="text-slate-500 dark:text-slate-400">P/L:</span>
+                        <span className={`font-medium ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                          {formatSignedCurrency(gainLoss)}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         );
