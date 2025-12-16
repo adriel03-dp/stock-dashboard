@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 import EnhancedNavbar from "./components/EnhancedNavbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ToastContainer from "./components/Toast";
@@ -19,14 +20,15 @@ import NotFound from "./pages/NotFound";
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <div className="min-h-screen w-full bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 overflow-x-hidden">
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <div className="min-h-screen w-full bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 overflow-x-hidden">
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
               
               {/* Protected routes */}
               <Route
@@ -153,5 +155,6 @@ export default function App() {
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }
