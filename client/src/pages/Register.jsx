@@ -92,7 +92,7 @@ export default function Register() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="........@gmail.com"
-                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 dark:bg-slate-700 dark:text-white transition-all ${
+                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 bg-white text-slate-900 transition-all ${
                   errors.email
                     ? "border-red-500 focus:ring-red-500"
                     : "border-slate-200 dark:border-slate-600 focus:ring-blue-500"
@@ -119,7 +119,7 @@ export default function Register() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="__username__"
-                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 dark:bg-slate-700 dark:text-white transition-all ${
+                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 bg-white text-slate-900 transition-all ${
                   errors.username
                     ? "border-red-500 focus:ring-red-500"
                     : "border-slate-200 dark:border-slate-600 focus:ring-blue-500"
@@ -146,7 +146,7 @@ export default function Register() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 dark:bg-slate-700 dark:text-white transition-all ${
+                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 bg-white text-slate-900 transition-all ${
                   errors.password
                     ? "border-red-500 focus:ring-red-500"
                     : "border-slate-200 dark:border-slate-600 focus:ring-blue-500"
@@ -199,7 +199,7 @@ export default function Register() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 dark:bg-slate-700 dark:text-white transition-all ${
+                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 bg-white text-slate-900 transition-all ${
                   errors.confirmPassword
                     ? "border-red-500 focus:ring-red-500"
                     : "border-slate-200 dark:border-slate-600 focus:ring-blue-500"
