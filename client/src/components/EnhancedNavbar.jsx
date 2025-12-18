@@ -121,7 +121,7 @@ export default function EnhancedNavbar({ onSearch }) {
   const showSearch = typeof onSearch === "function";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+    <header className="sticky top-0 z-50 border-b border-slate-200/50 bg-transparent backdrop-blur dark:border-slate-700/50">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         {/* Logo and Brand */}
         <motion.button
