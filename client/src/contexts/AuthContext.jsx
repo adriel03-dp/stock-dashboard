@@ -18,9 +18,7 @@ export function AuthProvider({ children }) {
 
   const verifyToken = async () => {
     try {
-      const response = await api.get("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get("/auth/me");
       setUser(response.data);
     } catch (err) {
       localStorage.removeItem("authToken");
