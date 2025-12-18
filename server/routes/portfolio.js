@@ -1,4 +1,5 @@
 import express from "express";
+import authMiddleware from "../middleware/auth.js";
 import {
   getPortfolios,
   createPortfolio,
@@ -10,6 +11,9 @@ import {
 } from "../controllers/portfolioController.js";
 
 const router = express.Router();
+
+// Apply auth middleware to all routes
+router.use(authMiddleware);
 
 // User portfolios
 router.get("/", getPortfolios);
