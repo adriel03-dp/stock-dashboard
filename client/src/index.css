@@ -1,8 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* stylelint-disable at-rule-no-unknown */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* stylelint-enable at-rule-no-unknown */
 
 /* Global Font Configuration */
 * {
@@ -22,7 +24,7 @@ h1, h2, h3, h4, h5, h6 {
   --transition-base: 0.3s ease;
 }
 
-/* Custom Scrollbar */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -41,7 +43,6 @@ h1, h2, h3, h4, h5, h6 {
   background: #94a3b8;
 }
 
-/* Dark Mode Scrollbar */
 [data-theme="dark"] ::-webkit-scrollbar-track {
   background: #1e293b;
 }
@@ -54,28 +55,71 @@ h1, h2, h3, h4, h5, h6 {
   background: #64748b;
 }
 
-/* Body Styling */
+/* HTML / BODY RESET */
+html,
 body {
-  @apply bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-800;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: #020617; /* fallback to prevent canvas flash */
+}
+
+/* BODY BASE */
+body {
+  width: 100%;
+  overflow-x: hidden;
   transition: background-color 0.3s ease;
+  position: relative;
 }
 
-body[data-theme="dark"] {
-  @apply bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900 text-slate-100;
+/* FIXED BACKGROUND LAYER (NO SCROLL BUG) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to bottom right,
+    #f8fafc,
+    #ffffff,
+    #f1f5f9
+  );
 }
 
-/* Base Inputs */
-input, textarea, select {
+/* DARK MODE BACKGROUND */
+body[data-theme="dark"]::before {
+  background: linear-gradient(
+    to bottom right,
+    #020617,
+    #0f172a,
+    #0f172a
+  );
+}
+
+/* ROOT CONTAINER */
+#root {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* FORM ELEMENTS */
+input,
+textarea,
+select {
   font-family: 'Inter', sans-serif;
   font-weight: 400;
   transition: all var(--transition-fast);
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
 }
 
-/* Button Base */
+/* BUTTONS */
 button {
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
@@ -83,14 +127,14 @@ button {
   transition: all var(--transition-fast);
 }
 
-/* Link Base */
+/* LINKS */
 a {
   color: inherit;
   text-decoration: none;
   transition: all var(--transition-fast);
 }
 
-/* Utility Classes */
+/* GLASS EFFECTS */
 .glass {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
@@ -103,12 +147,13 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* GRADIENT UTILITIES */
 .gradient-cyan {
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #14b8a6 100%);
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4, #14b8a6);
 }
 
 .gradient-purple {
-  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 50%, #d946ef 100%);
+  background: linear-gradient(135deg, #a78bfa, #c084fc, #d946ef);
 }
 
 .gradient-text {
