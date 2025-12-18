@@ -1,26 +1,53 @@
 import Portfolio from "../models/Portfolio.js";
-import jwt from "jsonwebtoken";
+import { fetchMassiveStockSummary } from "../utils/stockData.js";
 
-const getUserIdFromToken = (token) => {
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
-    return decoded.id;
-  } catch (err) {
-    return null;
+async function enrichPortfolioWithLivePrices(portfolio) {
+  if (!process.env.MASSIVE_API_KEY || !portfolio.holdings || !portfolio.holdings.length) {
+    return portfolio;
   }
-};
+
+  const enrichedPortfolio = portfolio.toObject ? portfolio.toObject() : JSON.parse(JSON.stringify(portfolio));
+  
+  enrichedPortfolio.holdings = await Promise.all(
+    enrichedPortfolio.holdings.map(async (holding) => {
+      try {
+        const summary = await fetchMassiveStockSummary(holding.symbol);
+        if (summary?.price != null) {
+          return {
+            ...holding,
+            currentPrice: summary.price,
+            change: summary.change,
+            changePercent: summary.changePercent,
+            currentValue: summary.price * holding.quantity,
+            gainLoss: (summary.price * holding.quantity) - (holding.avgPrice * holding.quantity)
+          };
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch live price for ${holding.symbol}:`, err.message);
+      }
+      return holding;
+    })
+  );
+
+  return enrichedPortfolio;
+}
 
 export const getPortfolios = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    const userId = getUserIdFromToken(token);
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
     const portfolios = await Portfolio.find({ userId }).sort({ createdAt: -1 });
-    res.json(portfolios);
+    
+    // Enrich with live prices
+    const enrichedPortfolios = await Promise.all(
+      portfolios.map(p => enrichPortfolioWithLivePrices(p))
+    );
+    
+    res.json(enrichedPortfolios);
   } catch (err) {
     console.error("Error fetching portfolios:", err);
     res.status(500).json({ error: "Server error" });
@@ -29,8 +56,7 @@ export const getPortfolios = async (req, res) => {
 
 export const createPortfolio = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    const userId = getUserIdFromToken(token);
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -59,8 +85,7 @@ export const createPortfolio = async (req, res) => {
 
 export const getPortfolioById = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    const userId = getUserIdFromToken(token);
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -75,7 +100,9 @@ export const getPortfolioById = async (req, res) => {
       return res.status(404).json({ error: "Portfolio not found" });
     }
 
-    res.json(portfolio);
+    // Enrich with live prices
+    const enrichedPortfolio = await enrichPortfolioWithLivePrices(portfolio);
+    res.json(enrichedPortfolio);
   } catch (err) {
     console.error("Error fetching portfolio:", err);
     res.status(500).json({ error: "Server error" });
@@ -84,8 +111,7 @@ export const getPortfolioById = async (req, res) => {
 
 export const updatePortfolio = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    const userId = getUserIdFromToken(token);
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -103,7 +129,9 @@ export const updatePortfolio = async (req, res) => {
       return res.status(404).json({ error: "Portfolio not found" });
     }
 
-    res.json(portfolio);
+    // Enrich with live prices
+    const enrichedPortfolio = await enrichPortfolioWithLivePrices(portfolio);
+    res.json(enrichedPortfolio);
   } catch (err) {
     console.error("Error updating portfolio:", err);
     res.status(500).json({ error: "Server error" });
@@ -112,8 +140,7 @@ export const updatePortfolio = async (req, res) => {
 
 export const deletePortfolio = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    const userId = getUserIdFromToken(token);
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -137,8 +164,7 @@ export const deletePortfolio = async (req, res) => {
 
 export const addHolding = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    const userId = getUserIdFromToken(token);
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -182,8 +208,7 @@ export const addHolding = async (req, res) => {
 
 export const removeHolding = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    const userId = getUserIdFromToken(token);
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
