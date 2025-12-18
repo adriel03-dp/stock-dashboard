@@ -22,9 +22,7 @@ export default function PortfolioPage() {
   const loadPortfolios = () => {
     if (!token) return;
 
-    api.get("/portfolio", {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get("/portfolio")
       .then((r) => {
         setItems(r.data || []);
         setError(null);
@@ -55,8 +53,6 @@ export default function PortfolioPage() {
       await api.post("/portfolio", {
         name: formData.name,
         description: formData.description
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       toast.success(`Portfolio "${formData.name}" created successfully!`);
