@@ -470,47 +470,20 @@ MONGO_URI=mongodb://localhost:27017/stock-dashboard
 JWT_SECRET=your_super_secret_jwt_key_here_change_in_production
 
 # Primary Stock API (Required for full functionality)
-MASSIVE_API_KEY=your_massive_api_key
-MASSIVE_API_BASE=https://api.massive.com
+
 
 # WebSocket Endpoints (Optional - will use defaults if not provided)
-MASSIVE_STOCKS_REALTIME_WS=wss://socket.massive.com/stocks
-MASSIVE_STOCKS_DELAYED_WS=wss://delayed.massive.com/stocks
-MASSIVE_STOCKS_BUSINESS_WS=wss://business.massive.com/stocks
 
 # News APIs
-FINNHUB_API_KEY=your_finnhub_api_key
+
 
 # Additional Stock APIs (Optional)
-FMP_API_KEY=your_fmp_api_key
+
 
 # Server Configuration
 PORT=5000
-NODE_ENV=development
-```
 
-### 4. Obtain API Keys
-
-#### Massive API (Recommended)
-1. Visit [massive.com](https://massive.com)
-2. Sign up for an account
-3. Navigate to API dashboard
-4. Generate API key
-5. **Features**: Stock quotes, historical data, real-time streaming, technical indicators
-
-#### Finnhub (Recommended for News)
-1. Visit [finnhub.io](https://finnhub.io)
-2. Create free account
-3. Copy API key from dashboard
-4. **Features**: Real-time news, company news, market sentiment
-
-#### Financial Modeling Prep (Optional)
-1. Visit [financialmodelingprep.com](https://financialmodelingprep.com)
-2. Sign up for account
-3. Get API key
-4. **Features**: Stock screener, fundamentals, historical data
-
-### 5. Run the Application
+### 4. Run the Application
 
 #### Development Mode
 
@@ -834,7 +807,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-**Adriel DP**
+**Adriel Perera**
 - GitHub: [@adriel03-dp](https://github.com/adriel03-dp)
 
 ## 🙏 Acknowledgments
