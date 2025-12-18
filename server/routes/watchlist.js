@@ -1,9 +1,13 @@
 import express from "express";
+import authMiddleware from "../middleware/auth.js";
 import WatchItem from "../models/WatchItem.js";
 import { fetchCoinMarket } from "../services/binanceService.js";
 import { fetchMassiveStockSummary } from "../utils/stockData.js";
 
 const router = express.Router();
+
+// Apply auth middleware to all routes
+router.use(authMiddleware);
 
 router.post("/", async (req, res) => {
   try {
@@ -57,8 +61,42 @@ router.get("/", async (req, res) => {
     const filter = {};
     if (req.query.type) filter.type = req.query.type === "crypto" ? "crypto" : "stock";
     const items = await WatchItem.find(filter).sort({ addedAt: -1 });
+    
+    // Enrich stocks with live prices from Massive API
+    if (process.env.MASSIVE_API_KEY) {
+      const enrichedItems = await Promise.all(
+        items.map(async (item) => {
+          const itemObj = item.toObject();
+          if (item.type === "stock") {
+            try {
+              const summary = await fetchMassiveStockSummary(item.symbol);
+              if (summary?.price != null) {
+                itemObj.lastPrice = summary.price;
+                itemObj.liveData = summary;
+              }
+            } catch (err) {
+              // Keep cached price if API fails
+              console.warn(`Failed to fetch live price for ${item.symbol}:`, err.message);
+            }
+          } else if (item.type === "crypto") {
+            try {
+              const coin = await fetchCoinMarket((item.externalId || item.symbol || "").toLowerCase());
+              if (coin?.current_price != null) {
+                itemObj.lastPrice = coin.current_price;
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch live crypto price for ${item.symbol}:`, err.message);
+            }
+          }
+          return itemObj;
+        })
+      );
+      return res.json(enrichedItems);
+    }
+    
     res.json(items);
   } catch (err) {
+    console.error("Watchlist error:", err);
     res.status(500).json({ error: "Failed to load watchlist" });
   }
 });
