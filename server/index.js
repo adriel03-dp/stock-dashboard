@@ -9,6 +9,8 @@ import newsRoutes from "./routes/news.js";
 import portfolioRoutes from "./routes/portfolio.js";
 import marketRoutes from "./routes/market.js";
 import authRoutes from "./routes/auth.js";
+import newsStreamingService from "./services/newsStreamingService.js";
+import FinnhubNewsService from "./services/finnhubNewsService.js";
 
 dotenv.config();
 const app = express();
@@ -40,4 +42,28 @@ app.use("/api/market", marketRoutes);
 app.get("/", (req, res) => res.json({ status: "API running" }));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+const server = app.listen(PORT, () => {
+  console.log(`Server running on ${PORT}`);
+  
+  // Start real-time news streaming service
+  console.log("🚀 Starting real-time news streaming service...");
+  newsStreamingService.start();
+
+  // Initialize and optionally start Finnhub service
+  if (process.env.FINNHUB_API_KEY) {
+    console.log("🔴 Finnhub API key detected, service will start on first client connection");
+    // Finnhub service is lazily initialized in routes, starts on first client connection
+  } else {
+    console.log("⚠️ FINNHUB_API_KEY not configured, Finnhub news service unavailable");
+  }
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully...");
+  newsStreamingService.stop();
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
+});
