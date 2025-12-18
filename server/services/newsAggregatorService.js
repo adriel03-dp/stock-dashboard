@@ -3,7 +3,109 @@ import { generateMockNews } from "./mockData.js";
 
 const newsAggregator = {
   /**
-   * Fetch from Massive API (primary source)
+   * Fetch from Finnhub API (PRIMARY SOURCE - live data)
+   */
+  async fetchFromFinnhub(params = {}) {
+    try {
+      const finnhubKey = process.env.FINNHUB_API_KEY;
+      if (!finnhubKey) {
+        console.log("⚠️ Finnhub API key not configured");
+        return [];
+      }
+
+      console.log("📡 Fetching from Finnhub API (PRIMARY)...");
+      
+      const response = await axios.get("https://finnhub.io/api/v1/news", {
+        params: {
+          token: finnhubKey,
+          limit: params.limit || 50,
+          minId: 0
+        },
+        timeout: 8000
+      });
+
+      const articles = Array.isArray(response.data) ? response.data : [];
+      
+      if (articles.length > 0) {
+        console.log(`✅ Finnhub API returned ${articles.length} articles`);
+        return articles.map(item => ({
+          id: item.id || item.url || Math.random().toString(36),
+          title: item.headline || "Untitled",
+          description: item.summary || "",
+          url: item.url || "",
+          image: item.image || null,
+          source: "Finnhub",
+          sourceLogo: this.getLogoForSource("Finnhub"),
+          publishedAt: item.datetime 
+            ? new Date(item.datetime * 1000).toISOString()
+            : new Date().toISOString(),
+          tickers: item.related || [],
+          category: this.categorizeNews(item.headline + " " + (item.summary || ""))
+        }));
+      }
+
+      console.log("⚠️ Finnhub API returned no results");
+      return [];
+    } catch (err) {
+      console.warn("❌ Finnhub API error:", err.message);
+      return [];
+    }
+  },
+
+  /**
+   * Fetch from Polygon API (FALLBACK SOURCE - actually Massive API)
+   * Note: Polygon news endpoint is part of Massive API (massive.com)
+   */
+  async fetchFromPolygon(params = {}) {
+    try {
+      const massiveKey = process.env.MASSIVE_API_KEY;
+      if (!massiveKey) {
+        console.log("⚠️ Massive API key not configured");
+        return [];
+      }
+
+      console.log("📡 Fetching from Polygon/Massive API (FALLBACK)...");
+      
+      const response = await axios.get("https://api.massive.com/v1/news", {
+        params: {
+          apikey: massiveKey,
+          limit: params.limit || 50,
+          sort: "published_utc"
+        },
+        timeout: 8000,
+        headers: {
+          'Authorization': `Bearer ${massiveKey}`
+        }
+      });
+
+      const results = response.data?.results || response.data?.data || [];
+      
+      if (results.length > 0) {
+        console.log(`✅ Polygon/Massive API returned ${results.length} articles`);
+        return results.map(item => ({
+          id: item.id || item.article_url || item.url || Math.random().toString(36),
+          title: item.title || item.headline || "Untitled",
+          description: item.description || item.snippet || item.summary || "",
+          url: item.article_url || item.url || item.link || "",
+          image: item.image_url || item.image || null,
+          source: item.source || "Massive",
+          sourceLogo: this.getLogoForSource(item.source || "Massive"),
+          publishedAt: item.published_utc || item.published_at || item.publishedAt || new Date().toISOString(),
+          tickers: item.tickers || item.symbols || [],
+          category: this.categorizeNews(item.title + " " + (item.description || item.summary || ""))
+        }));
+      }
+
+      console.log("⚠️ Polygon/Massive API returned no results");
+      return [];
+    } catch (err) {
+      console.warn("❌ Polygon/Massive API error:", err.message);
+      return [];
+    }
+  },
+
+  /**
+   * Fetch from Massive API (FALLBACK SOURCE)
    * Attempts multiple possible endpoints for robustness
    */
   async fetchFromMassive(params = {}) {
@@ -14,69 +116,41 @@ const newsAggregator = {
         return [];
       }
 
-      // Try multiple possible endpoints based on Massive API docs
-      const endpoints = [
-        // New pattern endpoints
-        "https://api.massive.com/news",
-        "https://api.massive.com/v2/news",
-        "https://api.massive.com/api/news",
-        // Original patterns
-        "https://api.massive.com/v3/news",
-        "https://api.massive.com/v1/news",
-        // Alternative domains
-        "https://news.massive.com/api/news",
-        "https://news.api.massive.com",
-        "https://data.massive.com/news"
-      ];
+      console.log("📡 Fetching from Massive API (FALLBACK)...");
 
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`📡 Trying Massive API: ${endpoint}`);
-          const response = await axios.get(endpoint, {
-            params: {
-              apiKey: massiveKey,
-              key: massiveKey,
-              api_key: massiveKey,
-              token: massiveKey,
-              limit: params.limit || 50,
-              ...params
-            },
-            timeout: 5000,
-            headers: {
-              'Authorization': `Bearer ${massiveKey}`,
-              'X-API-Key': massiveKey
-            }
-          });
-
-          const news = response.data?.results || response.data?.data || response.data?.news || response.data || [];
-          if (Array.isArray(news) && news.length > 0) {
-            console.log(`✅ Massive API returned ${news.length} articles from ${endpoint}`);
-            return news.map(item => ({
-              id: item.id || item.url || Math.random().toString(36),
-              title: item.title || item.headline || "Untitled",
-              description: item.description || item.summary || item.content || "",
-              url: item.url || item.link || "",
-              image: item.image_url || item.image || item.imageUrl || "",
-              source: item.source || "Massive",
-              sourceLogo: this.getLogoForSource(item.source || "Massive"),
-              publishedAt: item.published_utc || item.published_at || item.publishedAt || item.published || new Date().toISOString(),
-              tickers: item.tickers || item.symbols || item.ticker || [],
-              category: this.categorizeNews(item.title + " " + (item.description || item.summary || item.content || ""))
-            }));
-          }
-        } catch (endpointErr) {
-          // Log and try next endpoint
-          if (endpointErr.response?.status !== 404) {
-            console.log(`⚠️ ${endpoint}: ${endpointErr.message}`);
-          }
-          continue;
+      const response = await axios.get("https://api.massive.com/v1/news/top", {
+        params: {
+          apikey: massiveKey,
+          limit: params.limit || 50,
+          language: "en"
+        },
+        timeout: 8000,
+        headers: {
+          'Authorization': `Bearer ${massiveKey}`
         }
+      });
+
+      const news = response.data?.results || response.data?.data || response.data?.news || [];
+      if (Array.isArray(news) && news.length > 0) {
+        console.log(`✅ Massive API returned ${news.length} articles`);
+        return news.map(item => ({
+          id: item.id || item.url || Math.random().toString(36),
+          title: item.title || item.headline || "Untitled",
+          description: item.description || item.summary || item.content || "",
+          url: item.url || item.link || "",
+          image: item.image_url || item.image || item.imageUrl || "",
+          source: item.source || "Massive",
+          sourceLogo: this.getLogoForSource(item.source || "Massive"),
+          publishedAt: item.published_utc || item.published_at || item.publishedAt || item.published || new Date().toISOString(),
+          tickers: item.tickers || item.symbols || item.ticker || [],
+          category: this.categorizeNews(item.title + " " + (item.description || item.summary || item.content || ""))
+        }));
       }
 
-      console.log("⚠️ Massive API: Could not fetch from any endpoint (falling back to mock data)");
+      console.log("⚠️ Massive API returned no results");
       return [];
     } catch (err) {
-      console.warn("Massive API error:", err.message);
+      console.warn("❌ Massive API error:", err.message);
       return [];
     }
   },
@@ -94,14 +168,6 @@ const newsAggregator = {
    */
   async fetchFromNewsAPI(params = {}) {
     // NewsAPI not configured - skip
-    return [];
-  },
-
-  /**
-   * Fetch from Finnhub (market news)
-   */
-  async fetchFromFinnhub(params = {}) {
-    // Finnhub not configured - skip
     return [];
   },
 
@@ -146,12 +212,13 @@ const newsAggregator = {
    */
   getLogoForSource(source) {
     const logoMap = {
-      "Bloomberg": ["https://logo.clearbit.com/bloomberg.com", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23FF6000' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='70' font-weight='bold' fill='white' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E"],
-      "Reuters": ["https://logo.clearbit.com/reuters.com", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23FF6000' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='45' font-weight='bold' fill='white' text-anchor='middle'%3ERUET%3C/text%3E%3C/svg%3E"],
-      "CNBC": ["https://logo.clearbit.com/cnbc.com", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23CC0000' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='60' font-weight='bold' fill='white' text-anchor='middle'%3ECNBC%3C/text%3E%3C/svg%3E"],
-      "MarketWatch": ["https://logo.clearbit.com/marketwatch.com", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23003D7A' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='50' font-weight='bold' fill='white' text-anchor='middle'%3EMW%3C/text%3E%3C/svg%3E"],
-      "Seeking Alpha": ["https://logo.clearbit.com/seekingalpha.com", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%234A90E2' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='55' font-weight='bold' fill='white' text-anchor='middle'%3ESA%3C/text%3E%3C/svg%3E"],
-      "Investor's Business Daily": ["https://logo.clearbit.com/investors.com", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23000000' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='60' font-weight='bold' fill='white' text-anchor='middle'%3EIBD%3C/text%3E%3C/svg%3E"]
+      "Finnhub": ["https://finnhub.io/favicon.ico", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%234A90E2' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='45' font-weight='bold' fill='white' text-anchor='middle'%3EFH%3C/text%3E%3C/svg%3E"],
+      "Bloomberg": ["https://www.bloomberg.com/favicon.ico", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23FF6000' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='70' font-weight='bold' fill='white' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E"],
+      "Reuters": ["https://www.reuters.com/favicon.ico", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23FF6000' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='45' font-weight='bold' fill='white' text-anchor='middle'%3ERUET%3C/text%3E%3C/svg%3E"],
+      "CNBC": ["https://www.cnbc.com/favicon.ico", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23CC0000' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='60' font-weight='bold' fill='white' text-anchor='middle'%3ECNBC%3C/text%3E%3C/svg%3E"],
+      "MarketWatch": ["https://www.marketwatch.com/favicon.ico", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23003D7A' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='50' font-weight='bold' fill='white' text-anchor='middle'%3EMW%3C/text%3E%3C/svg%3E"],
+      "Seeking Alpha": ["https://seekingalpha.com/favicon.ico", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%234A90E2' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='55' font-weight='bold' fill='white' text-anchor='middle'%3ESA%3C/text%3E%3C/svg%3E"],
+      "Investor's Business Daily": ["https://investors.com/favicon.ico", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23000000' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='60' font-weight='bold' fill='white' text-anchor='middle'%3EIBD%3C/text%3E%3C/svg%3E"]
     };
 
     // Check for partial matches
@@ -161,10 +228,17 @@ const newsAggregator = {
       }
     }
 
-    // Default fallback
+    // Default fallback - generate initials from source name
+    const initials = (source || "News")
+      .split(/\s+/)
+      .map(word => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 3);
+    
     return [
-      `https://logo.clearbit.com/${source?.toLowerCase().replace(/\s+/g, '')}.com`,
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%234A90E2' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='45' font-weight='bold' fill='white' text-anchor='middle'%3E%3C/text%3E%3C/svg%3E"
+      `https://${source?.toLowerCase().replace(/\s+/g, '')}.com/favicon.ico`,
+      `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%234A90E2' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='45' font-weight='bold' fill='white' text-anchor='middle'%3E${initials}%3C/text%3E%3C/svg%3E`
     ];
   },
 
@@ -230,6 +304,7 @@ const newsAggregator = {
 
   /**
    * Main aggregation method - fetch from multiple sources
+   * Priority: Finnhub (live) -> Polygon (live) -> Massive (fallback)
    */
   async aggregateNews(options = {}) {
     const {
@@ -240,25 +315,31 @@ const newsAggregator = {
       includeMockData = true
     } = options;
 
-    console.log("🔍 Aggregating news from multiple sources...");
+    console.log("🔍 Aggregating news from multiple sources (priority: Finnhub > Polygon > Massive)...");
 
-    // Fetch from all sources in parallel
-    const [massiveNews, fmpNews, newsApiNews, finnhubNews] = await Promise.all([
-      this.fetchFromMassive({ limit }),
-      this.fetchFromFMP({ limit }),
-      this.fetchFromNewsAPI({ limit }),
-      this.fetchFromFinnhub({ limit })
-    ]);
+    // Fetch from sources in priority order
+    const finnhubNews = await this.fetchFromFinnhub({ limit });
+    console.log(`📰 Finnhub: ${finnhubNews.length} articles`);
 
-    // Combine all news
-    let combinedNews = [
-      ...massiveNews,
-      ...fmpNews,
-      ...newsApiNews,
-      ...finnhubNews
-    ];
+    let combinedNews = [...finnhubNews];
 
-    console.log(`📰 Fetched ${combinedNews.length} articles from APIs`);
+    // If Finnhub didn't return enough, try Polygon
+    if (combinedNews.length < limit) {
+      const remainingLimit = limit - combinedNews.length;
+      const polygonNews = await this.fetchFromPolygon({ limit: remainingLimit });
+      console.log(`📰 Polygon: ${polygonNews.length} articles`);
+      combinedNews = [...combinedNews, ...polygonNews];
+    }
+
+    // If still not enough, try Massive
+    if (combinedNews.length < limit) {
+      const remainingLimit = limit - combinedNews.length;
+      const massiveNews = await this.fetchFromMassive({ limit: remainingLimit });
+      console.log(`📰 Massive: ${massiveNews.length} articles`);
+      combinedNews = [...combinedNews, ...massiveNews];
+    }
+
+    console.log(`📰 Total fetched ${combinedNews.length} articles from live APIs`);
 
     // If not enough articles, add mock data
     if (includeMockData && combinedNews.length < limit) {
