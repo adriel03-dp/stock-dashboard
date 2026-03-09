@@ -1,0 +1,14 @@
+# Environment files
+server/.env
+.env
+.env.local
+.env*.local
+
+# Dependencies
+node_modules
+client/node_modules
+server/node_modules
+
+# Build output
+client/dist
+client/dist-ssr
