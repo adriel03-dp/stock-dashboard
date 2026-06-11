@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getApiBaseUrl } from "../utils/apiBase";
 
 function parseEventData(data) {
   if (!data) return null;
@@ -18,13 +19,8 @@ function normalizeOptions(options) {
 
 function getStreamBase() {
   if (typeof window === "undefined") return "";
-  const baseEnv = import.meta.env.VITE_API_STREAM_BASE || import.meta.env.VITE_API_BASE;
-  if (baseEnv) return baseEnv.replace(/\/+$/, "");
-  // default to localhost:5000 in dev, otherwise same origin
-  const { protocol, hostname } = window.location;
-  const defaultPort = hostname === "localhost" || hostname === "127.0.0.1" ? "5000" : window.location.port;
-  const origin = `${protocol}//${hostname}${defaultPort ? `:${defaultPort}` : ""}`;
-  return `${origin}/api`;
+  const streamBase = import.meta.env.VITE_API_STREAM_BASE;
+  return streamBase ? streamBase.replace(/\/+$/, "") : getApiBaseUrl();
 }
 
 export default function useStockStream(symbol, options) {

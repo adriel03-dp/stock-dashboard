@@ -1,18 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-
-/**
- * Get API base URL from environment or construct from current location
- */
-function getApiBaseUrl() {
-  const baseUrl = import.meta.env.VITE_API_BASE;
-  if (baseUrl) return baseUrl;
-
-  // Fallback: use current host but with backend port
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname;
-  const port = import.meta.env.VITE_API_PORT || 5000;
-  return `${protocol}//${hostname}:${port}`;
-}
+import { getApiBaseUrl } from "../utils/apiBase";
 
 /**
  * Hook to consume real-time Finnhub news stream
@@ -36,7 +23,7 @@ export function useFinnhubNews(enabled = true, onNewArticles = null) {
     try {
       console.log("🔗 Connecting to Finnhub news stream...");
       const apiBaseUrl = getApiBaseUrl();
-      const url = `${apiBaseUrl}/api/news/finnhub/stream`;
+      const url = `${apiBaseUrl}/news/finnhub/stream`;
       console.log("📍 EventSource URL:", url);
       const eventSource = new EventSource(url);
 
@@ -173,7 +160,7 @@ export function useFinnhubNews(enabled = true, onNewArticles = null) {
   const refresh = useCallback(async () => {
     try {
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/news/finnhub/cached?limit=50`);
+      const response = await fetch(`${apiBaseUrl}/news/finnhub/cached?limit=50`);
       const data = await response.json();
 
       if (data.articles && Array.isArray(data.articles)) {
@@ -195,7 +182,7 @@ export function useFinnhubNews(enabled = true, onNewArticles = null) {
   const getStatus = useCallback(async () => {
     try {
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/news/finnhub/status`);
+      const response = await fetch(`${apiBaseUrl}/news/finnhub/status`);
       const data = await response.json();
       setStatus(data);
       return data;
@@ -211,7 +198,7 @@ export function useFinnhubNews(enabled = true, onNewArticles = null) {
     async (action) => {
       try {
         const apiBaseUrl = getApiBaseUrl();
-        const response = await fetch(`${apiBaseUrl}/api/news/finnhub/control`, {
+        const response = await fetch(`${apiBaseUrl}/news/finnhub/control`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action })

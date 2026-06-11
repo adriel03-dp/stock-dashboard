@@ -1,18 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-
-/**
- * Get API base URL from environment or construct from current location
- */
-function getApiBaseUrl() {
-  const baseUrl = import.meta.env.VITE_API_BASE;
-  if (baseUrl) return baseUrl;
-  
-  // Fallback: use current host but with backend port
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname;
-  const port = import.meta.env.VITE_API_PORT || 5000;
-  return `${protocol}//${hostname}:${port}`;
-}
+import { getApiBaseUrl } from "../utils/apiBase";
 
 /**
  * Hook to consume real-time news stream from server
@@ -36,7 +23,7 @@ export function useNewsStream(enabled = true, onNewArticles = null) {
     try {
       console.log("🔗 Connecting to news stream...");
       const apiBaseUrl = getApiBaseUrl();
-      const eventSource = new EventSource(`${apiBaseUrl}/api/news/stream`);
+      const eventSource = new EventSource(`${apiBaseUrl}/news/stream`);
 
       eventSource.onopen = () => {
         console.log("✅ Connected to news stream");
@@ -179,7 +166,7 @@ export function useNewsStream(enabled = true, onNewArticles = null) {
       if (filters.limit) params.append("limit", filters.limit);
 
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/news/cached?${params}`);
+      const response = await fetch(`${apiBaseUrl}/news/cached?${params}`);
       const data = await response.json();
 
       if (data.status === "success") {
@@ -199,7 +186,7 @@ export function useNewsStream(enabled = true, onNewArticles = null) {
     try {
       console.log("🔃 Refreshing news...");
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/news/refresh`, { method: "POST" });
+      const response = await fetch(`${apiBaseUrl}/news/refresh`, { method: "POST" });
       const data = await response.json();
       console.log("Refresh result:", data);
       return data;
@@ -214,7 +201,7 @@ export function useNewsStream(enabled = true, onNewArticles = null) {
   const fetchStats = useCallback(async () => {
     try {
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/news/stats`);
+      const response = await fetch(`${apiBaseUrl}/news/stats`);
       const data = await response.json();
       setStats(data);
       return data;
@@ -229,7 +216,7 @@ export function useNewsStream(enabled = true, onNewArticles = null) {
   const controlStream = useCallback(async (action) => {
     try {
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/news/stream/control`, {
+      const response = await fetch(`${apiBaseUrl}/news/stream/control`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action })
@@ -287,7 +274,7 @@ export function useStaticNews(options = {}) {
       params.append("limit", options.limit || 100);
 
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/news/top?${params}`, {
+      const response = await fetch(`${apiBaseUrl}/news/top?${params}`, {
         signal: AbortSignal.timeout(5000) // 5 second timeout
       });
       

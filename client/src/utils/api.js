@@ -1,17 +1,8 @@
 import axios from "axios";
-
-// Determine baseURL based on environment
-const getBaseURL = () => {
-  // In development, use relative path (Vite proxy will handle it)
-  if (import.meta.env.DEV) {
-    return "/api";
-  }
-  // In production, use full URL from env or default
-  return import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
-};
+import { getApiBaseUrl } from "./apiBase";
 
 export const api = axios.create({
-  baseURL: getBaseURL(),
+  baseURL: getApiBaseUrl(),
   timeout: 10000
 });
 
