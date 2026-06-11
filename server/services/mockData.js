@@ -1,4 +1,5 @@
 // Mock data for development when API keys are not configured
+import { getLogoUrls } from "./newsLogoService.js";
 
 export const generateMockStocks = (count = 100) => {
   const sectors = ["Technology", "Healthcare", "Finance", "Energy", "Consumer", "Industrial", "Materials", "Utilities"];
@@ -125,31 +126,120 @@ export const generateMockSectors = () => {
 };
 
 export const generateMockNews = (count = 20) => {
-  const titles = [
-    "Fed signals possible rate cut in 2025",
-    "Tech stocks rally on strong earnings",
-    "Oil prices surge on geopolitical tensions",
-    "Healthcare sector shows resilience",
-    "Banking crisis averted with emergency measures",
-    "Quarterly GDP growth exceeds expectations",
-    "Crypto market rebounds after recent losses",
-    "Semiconductor shortage eases supply chain",
-    "Merger boom returns to Wall Street",
-    "Unemployment rate hits record low"
+  const categoryMap = {
+    markets: [
+      "Fed signals possible rate cut in 2025",
+      "Quarterly GDP growth exceeds expectations",
+      "Merger boom returns to Wall Street",
+      "Stock market hits all-time high"
+    ],
+    economy: [
+      "Unemployment rate hits record low",
+      "Inflation pressures ease slightly",
+      "Consumer spending accelerates",
+      "Trade deficit narrows unexpectedly"
+    ],
+    technology: [
+      "Tech stocks rally on strong earnings",
+      "Semiconductor shortage eases supply chain",
+      "AI adoption accelerates across sectors",
+      "Cloud computing demand remains strong"
+    ],
+    energy: [
+      "Oil prices surge on geopolitical tensions",
+      "Renewable energy investments hit record",
+      "OPEC production cuts announced",
+      "Natural gas prices stabilize"
+    ],
+    crypto: [
+      "Crypto market rebounds after recent losses",
+      "Bitcoin breaks above $50,000",
+      "Ethereum upgrades boost performance",
+      "Stablecoin regulations tighten"
+    ]
+  };
+
+  const categoryImages = {
+    markets: [
+      "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1590283603974-d387221b747c?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1460925895917-adf4e565e479?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&h=250&fit=crop"
+    ],
+    economy: [
+      "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1579621970563-ebec5330b72f?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1608231387802-ba4f8c70ae0b?w=400&h=250&fit=crop"
+    ],
+    technology: [
+      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1518611505868-d2b6ba36af7e?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1551632786-de41eccebe9d?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=250&fit=crop"
+    ],
+    energy: [
+      "https://images.unsplash.com/photo-1533794459197-aad4bbd112c4?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1508615039623-a25605d2938d?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1466611653033-a2037a8b8a3a?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1500375592092-40eb3daca4e7?w=400&h=250&fit=crop"
+    ],
+    crypto: [
+      "https://images.unsplash.com/photo-1621761191319-c6fb62b338ad?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1605792657692-4e2489b18b5b?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1641896522149-d1edf94e0e9c?w=400&h=250&fit=crop",
+      "https://images.unsplash.com/photo-1626289606316-7fcaaa0cfca0?w=400&h=250&fit=crop"
+    ]
+  };
+
+  const sourceLogos = {
+    "Bloomberg": getLogoUrls("Bloomberg"),
+    "Reuters": getLogoUrls("Reuters"),
+    "CNBC": getLogoUrls("CNBC"),
+    "MarketWatch": getLogoUrls("MarketWatch"),
+    "Seeking Alpha": getLogoUrls("Seeking Alpha"),
+    "Investor's Business Daily": getLogoUrls("Investor's Business Daily")
+  };
+
+  const sources = Object.keys(sourceLogos);
+
+  const newsUrls = [
+    "https://www.cnbc.com/quotes/AAPL/",
+    "https://www.reuters.com/technology/",
+    "https://www.bloomberg.com/quote/MSFT:US",
+    "https://www.marketwatch.com/story/",
+    "https://www.nasdaq.com/articles/",
+    "https://seekingalpha.com/news",
+    "https://www.cnbc.com/markets/",
+    "https://www.bloomberg.com/markets",
+    "https://www.cnbc.com/economy/",
+    "https://www.reuters.com/finance/"
   ];
 
-  const sources = ["Bloomberg", "Reuters", "CNBC", "MarketWatch", "Seeking Alpha", "Investor's Business Daily"];
+  const categories = Object.keys(categoryMap);
 
-  return Array.from({ length: count }, (_, i) => ({
-    id: `news-${i}`,
-    title: titles[i % titles.length],
-    description: "Market participants are responding positively to the latest economic data releases. Analysts believe this could signal a shift in monetary policy direction for the coming quarters.",
-    url: `https://example.com/news/${i}`,
-    image: "https://via.placeholder.com/300x200?text=Market+News",
-    source: sources[Math.floor(Math.random() * sources.length)],
-    tickers: ["AAPL", "MSFT", "GOOGL"].slice(0, Math.floor(Math.random() * 3) + 1),
-    publishedAt: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString()
-  }));
+  return Array.from({ length: count }, (_, i) => {
+    const categoryIndex = i % categories.length;
+    const category = categories[categoryIndex];
+    const categoryTitles = categoryMap[category];
+    const title = categoryTitles[i % categoryTitles.length];
+    const source = sources[Math.floor(Math.random() * sources.length)];
+    const categoryImageList = categoryImages[category];
+    const image = categoryImageList[i % categoryImageList.length];
+
+    return {
+      id: `news-${i}`,
+      title: title,
+      description: "Market participants are responding positively to the latest economic data releases. Analysts believe this could signal a shift in monetary policy direction for the coming quarters.",
+      url: newsUrls[i % newsUrls.length],
+      image: image,
+      source: source,
+      sourceLogo: sourceLogos[source],
+      category: category,
+      tickers: ["AAPL", "MSFT", "GOOGL"].slice(0, Math.floor(Math.random() * 3) + 1),
+      publishedAt: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString()
+    };
+  });
 };
 
 export const generateMockStockDetail = (symbol = "AAPL") => {
