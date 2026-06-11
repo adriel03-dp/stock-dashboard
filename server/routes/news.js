@@ -616,7 +616,10 @@ router.get("/finnhub/stream", async (req, res) => {
       // Fallback: use the aggregated news endpoint with mock data
       try {
         console.log(`📡 [${clientId}] Falling back to aggregated news...`);
-        const topNewsResponse = await axios.get("http://localhost:5000/api/news/top?limit=50");
+        const internalApiBase =
+          process.env.INTERNAL_API_BASE_URL ||
+          `http://127.0.0.1:${process.env.PORT || 5000}`;
+        const topNewsResponse = await axios.get(`${internalApiBase}/api/news/top?limit=50`);
         initialArticles = Array.isArray(topNewsResponse.data) ? topNewsResponse.data.map(item => ({
           ...item,
           // Ensure sourceLogo is always an array
@@ -670,7 +673,10 @@ router.get("/finnhub/stream", async (req, res) => {
             console.warn(`⚠️ Refresh: Finnhub error, using fallback`);
             // Fallback for refresh
             try {
-              const fallbackResponse = await axios.get("http://localhost:5000/api/news/top?limit=10");
+              const internalApiBase =
+                process.env.INTERNAL_API_BASE_URL ||
+                `http://127.0.0.1:${process.env.PORT || 5000}`;
+              const fallbackResponse = await axios.get(`${internalApiBase}/api/news/top?limit=10`);
               freshArticles = Array.isArray(fallbackResponse.data) ? fallbackResponse.data.map(item => ({
                 ...item,
                 // Ensure sourceLogo is always an array
