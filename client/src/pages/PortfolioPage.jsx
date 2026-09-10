@@ -19,6 +19,8 @@ export default function PortfolioPage() {
   const [formData, setFormData] = useState({ name: "", description: "" });
   const [creatingPortfolio, setCreatingPortfolio] = useState(false);
 
+  const [createError, setCreateError] = useState(null);
+
   const loadPortfolios = () => {
     if (!token) return;
 
@@ -41,6 +43,8 @@ export default function PortfolioPage() {
 
   const handleCreatePortfolio = async (e) => {
     e.preventDefault();
+    if (creatingPortfolio) return;
+    setCreateError(null);
 
     if (!formData.name.trim()) {
       toast.error("Portfolio name is required");
@@ -50,17 +54,19 @@ export default function PortfolioPage() {
     setCreatingPortfolio(true);
 
     try {
-      await api.post("/portfolio", {
-        name: formData.name,
+      const { data: created } = await api.post("/portfolio", {
+        name: formData.name.trim(),
         description: formData.description
       });
 
       toast.success(`Portfolio "${formData.name}" created successfully!`);
       setFormData({ name: "", description: "" });
       setShowCreateForm(false);
-      loadPortfolios();
+      setItems(previous => [created, ...previous]);
+      setError(null);
     } catch (err) {
       const errorMessage = err?.response?.data?.error || "Failed to create portfolio";
+      setCreateError(errorMessage);
       toast.error(errorMessage);
       console.error("Error creating portfolio:", err);
     } finally {
@@ -69,10 +75,8 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_0%,rgba(168,85,247,0.15),transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_100%,rgba(59,130,246,0.12),transparent_45%)]" />
-      <main className="mx-auto w-full max-w-7xl">      <PageHeader        title="Portfolios"
+    <div className="page-content">
+      <div className="mx-auto w-full max-w-7xl">      <PageHeader        title="Portfolios"
         description="Manage and track your investment portfolios"
         icon={Briefcase}
         breadcrumb={<Breadcrumb />}
@@ -95,7 +99,7 @@ export default function PortfolioPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
           onClick={() => setShowCreateForm(false)}
         >
           <motion.div
@@ -116,12 +120,13 @@ export default function PortfolioPage() {
             </div>
 
             <form onSubmit={handleCreatePortfolio} className="space-y-4">
+              {createError && <p role="alert" className="text-sm text-red-600">{createError}</p>}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Portfolio Name *
                 </label>
                 <input
-                  type="text"
+                  id="portfolio-name" autoFocus required type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Tech Stocks, Growth Portfolio"
@@ -133,7 +138,7 @@ export default function PortfolioPage() {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Description (Optional)
                 </label>
-                <textarea
+                <textarea id="portfolio-description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Add notes about this portfolio..."
@@ -165,8 +170,8 @@ export default function PortfolioPage() {
 
       {loading && <LoadingMessage />}
       {error && <ErrorMessage message={error} />}
-      {!loading && !error && <Portfolio items={items} />}
-      </main>
+      {!loading && !error && <Portfolio items={items} onUpdated={loadPortfolios} />}
+      </div>
     </div>
   );
 }
