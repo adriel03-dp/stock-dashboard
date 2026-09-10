@@ -10,12 +10,14 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 });
 
 function formatCurrency(value) {
+  if (value == null) return "—";
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return "—";
   return currencyFormatter.format(numeric);
 }
 
 function formatSignedCurrency(value) {
+  if (value == null) return "—";
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return "—";
   const absolute = currencyFormatter.format(Math.abs(numeric));
@@ -31,7 +33,7 @@ function calculateCostBasis(holdings = []) {
   }, 0);
 }
 
-export default function Portfolio({ items = [] }) {
+export default function Portfolio({ items = [], onUpdated }) {
   const { token } = useAuth();
   const [values, setValues] = useState({});
 
@@ -60,7 +62,7 @@ export default function Portfolio({ items = [] }) {
       });
 
       next[portfolio._id] = {
-        value: totalValue > 0 ? totalValue : null
+        value: holdings.every(h => h.currentPrice != null && Number.isFinite(Number(h.currentPrice))) ? totalValue : null
       };
     });
 
@@ -100,15 +102,16 @@ export default function Portfolio({ items = [] }) {
                 <PortfolioValueDisplay holdings={holdings} valueEntry={values[portfolio._id]} />
               </div>
             </div>
+            <HoldingForm portfolioId={portfolio._id} onUpdated={onUpdated}/>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {holdings.map((holding) => {
-                const currentPrice = Number(holding.currentPrice) || Number(holding.lastPrice) || 0;
+                const currentPrice = holding.currentPrice != null && Number.isFinite(Number(holding.currentPrice)) ? Number(holding.currentPrice) : null;
                 const avgPrice = Number(holding.avgPrice) || 0;
                 const quantity = Number(holding.quantity) || 0;
-                const currentValue = currentPrice * quantity;
+                const currentValue = currentPrice == null ? null : currentPrice * quantity;
                 const costValue = avgPrice * quantity;
-                const gainLoss = currentValue - costValue;
-                const gainLossPercent = costValue > 0 ? (gainLoss / costValue) * 100 : 0;
+                const gainLoss = currentValue == null ? null : currentValue - costValue;
+                const gainLossPercent = gainLoss != null && costValue > 0 ? (gainLoss / costValue) * 100 : null;
                 const isPositive = gainLoss >= 0;
 
                 return (
@@ -127,7 +130,7 @@ export default function Portfolio({ items = [] }) {
                           {formatCurrency(currentPrice)}
                         </div>
                         <div className={`text-xs font-medium ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                          {isPositive ? "+" : ""}{gainLossPercent.toFixed(2)}%
+                          {gainLossPercent == null ? "Quote unavailable" : `${isPositive ? "+" : ""}${gainLossPercent.toFixed(2)}%`}
                         </div>
                       </div>
                     </div>
@@ -169,6 +172,7 @@ function PortfolioValueDisplay({ holdings = [], valueEntry }) {
       <div className="text-sm text-slate-600 dark:text-slate-400">
         Cost basis: {formatCurrency(costBasis)}
       </div>
+      {!isValueReady && <p className="text-xs text-slate-500">Valuation unavailable: one or more quotes are missing.</p>}
       {isValueReady && (
         <>
           <div className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -181,4 +185,20 @@ function PortfolioValueDisplay({ holdings = [], valueEntry }) {
       )}
     </div>
   );
+}
+
+function HoldingForm({portfolioId, onUpdated}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({symbol:'',quantity:'',avgPrice:''});
+  async function submit(e) {
+    e.preventDefault(); if(busy) return; setBusy(true); setError('');
+    try {
+      await api.post('/portfolio/' + portfolioId + '/holdings', {symbol:form.symbol.trim().toUpperCase(),quantity:Number(form.quantity),avgPrice:Number(form.avgPrice)});
+      setForm({symbol:'',quantity:'',avgPrice:''}); setOpen(false); onUpdated?.();
+    } catch(err) {setError(err.response?.data?.error || 'Could not save holding. Please try again.');}
+    finally {setBusy(false);}
+  }
+  return <div className="mt-4"><button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 dark:text-slate-200" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? 'Close holding form' : 'Add holding'}</button>{open && <form onSubmit={submit} className="mt-3 flex flex-wrap items-end gap-3">{[['symbol','Stock symbol','text'],['quantity','Quantity','number'],['avgPrice','Average purchase price (USD)','number']].map(([key,label,type]) => <label key={key} className="text-xs text-slate-600 dark:text-slate-300">{label}<input required type={type} min={key === 'quantity' ? '0.000001' : '0'} step="any" value={form[key]} onChange={e => setForm({...form,[key]:e.target.value})} className="mt-1 block w-44 rounded border border-slate-300 bg-white p-2 text-slate-900"/></label>)}<button disabled={busy} className="rounded bg-blue-600 px-4 py-2 text-sm text-white">{busy ? 'Saving…' : 'Save holding'}</button>{error && <p role="alert" className="w-full text-sm text-red-600">{error}</p>}</form>}</div>;
 }
