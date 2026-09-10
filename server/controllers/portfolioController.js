@@ -64,13 +64,13 @@ export const createPortfolio = async (req, res) => {
 
     const { name, description } = req.body;
 
-    if (!name) {
+    if (typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ error: "Portfolio name is required" });
     }
 
     const portfolio = new Portfolio({
       userId,
-      name,
+      name: name.trim(),
       description: description || "",
       holdings: []
     });
@@ -170,10 +170,12 @@ export const addHolding = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { symbol, quantity, avgPrice } = req.body;
+    const symbol = typeof req.body.symbol === "string" ? req.body.symbol.trim().toUpperCase() : "";
+    const quantity = Number(req.body.quantity);
+    const avgPrice = Number(req.body.avgPrice);
 
-    if (!symbol || !quantity || !avgPrice) {
-      return res.status(400).json({ error: "All fields required" });
+    if (!symbol || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(avgPrice) || avgPrice < 0 || req.body.avgPrice == null || req.body.avgPrice === "") {
+      return res.status(400).json({ error: "Enter a symbol, a positive quantity, and a non-negative average price." });
     }
 
     const portfolio = await Portfolio.findOne({
@@ -190,8 +192,9 @@ export const addHolding = async (req, res) => {
     );
 
     if (existingHolding) {
-      existingHolding.quantity += quantity;
-      existingHolding.avgPrice = (existingHolding.avgPrice + avgPrice) / 2;
+      const totalQuantity = existingHolding.quantity + quantity;
+      existingHolding.avgPrice = (existingHolding.avgPrice * existingHolding.quantity + avgPrice * quantity) / totalQuantity;
+      existingHolding.quantity = totalQuantity;
     } else {
       portfolio.holdings.push({ symbol, quantity, avgPrice, purchaseDate: new Date() });
     }

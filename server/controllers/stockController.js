@@ -1,6 +1,5 @@
 import Stock from "../models/Stock.js";
 import { massiveService } from "../services/massiveService.js";
-import { generateMockStocks } from "../services/mockData.js";
 
 // GET /api/stocks - Get trending stocks (live data)
 export const getStocks = async (req, res) => {
@@ -20,8 +19,8 @@ export const getStocks = async (req, res) => {
           const stocks = data.results.slice(0, limit).map((ticker) => ({
             symbol: ticker.ticker,
             name: ticker.name || ticker.company_name || ticker.ticker,
-            price: ticker.last_quote?.last_updated_utc ? null : 0,
-            change: ticker.last_quote?.last_updated_utc ? null : 0,
+            price: null,
+            change: null,
             changePercent: ticker.last_quote?.last_updated_utc ? null : 0,
             volume: ticker.volume || 0,
             marketCap: ticker.market_cap || null,
@@ -32,13 +31,11 @@ export const getStocks = async (req, res) => {
         }
       } catch (err) {
         console.warn("Failed to fetch from Massive API:", err.message);
-        // Fall through to mock data
+        // Return a provider-unavailable response below; never invent prices.
       }
     }
 
-    // Fallback to mock data
-    const mockStocks = generateMockStocks(limit);
-    res.json(mockStocks);
+    return res.status(503).json({error: "Stock provider data is unavailable."});
   } catch (err) {
     console.error("Error fetching stocks:", err.message);
     res.status(500).json({ error: "Failed to fetch stocks" });

@@ -23,7 +23,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     // Handle 401 - unauthorized (expired token)
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !['/auth/login', '/auth/register'].includes(error.config?.url)) {
       localStorage.removeItem("authToken");
       window.location.href = "/login";
       return Promise.reject(error);
