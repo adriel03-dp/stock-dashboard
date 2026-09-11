@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Briefcase, Plus, X } from "lucide-react";
 import { motion } from "framer-motion";
 import Breadcrumb from "../components/Breadcrumb";
@@ -20,7 +20,6 @@ export default function PortfolioPage() {
   const [creatingPortfolio, setCreatingPortfolio] = useState(false);
 
   const [createError, setCreateError] = useState(null);
-  const requestVersion = useRef(0);
 
   const loadPortfolios = useCallback((showLoader = false) => {
     if (!token) return;

@@ -35,9 +35,9 @@ const newsAggregator = {
           description: item.summary || "",
           url: item.url || "",
           image: item.image || null,
-          source,
+          source: item.source || "Finnhub",
           provider: "Finnhub",
-          sourceLogo: this.getLogoForSource(source),
+          sourceLogo: this.getLogoForSource("Finnhub"),
           publishedAt: item.datetime 
             ? new Date(item.datetime * 1000).toISOString()
             : null,
@@ -93,8 +93,8 @@ const newsAggregator = {
           description: item.description || item.snippet || item.summary || "",
           url: item.article_url || item.url || item.link || "",
           image: item.image_url || item.image || null,
-          source, provider: "Massive",
-          sourceLogo: this.getLogoForSource(source),
+          source: item.publisher?.name || item.source || "Massive", provider: "Massive",
+          sourceLogo: this.getLogoForSource(item.source || "Massive"),
           publishedAt: item.published_utc || item.published_at || item.publishedAt || null,
           tickers: item.tickers || item.symbols || [],
           category: this.categorizeNews(item.title + " " + (item.description || item.summary || ""))
@@ -147,8 +147,8 @@ const newsAggregator = {
           description: item.description || item.summary || item.content || "",
           url: item.url || item.link || "",
           image: item.image_url || item.image || item.imageUrl || "",
-          source, provider: "Massive",
-          sourceLogo: this.getLogoForSource(source),
+          source: item.publisher?.name || item.source || "Massive", provider: "Massive",
+          sourceLogo: this.getLogoForSource(item.source || "Massive"),
           publishedAt: item.published_utc || item.published_at || item.publishedAt || item.published || null,
           tickers: item.tickers || item.symbols || item.ticker || [],
           category: this.categorizeNews(item.title + " " + (item.description || item.summary || item.content || ""))

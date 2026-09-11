@@ -23,29 +23,6 @@ app.use(express.json());
 async function connectDB() {
   try {
     await mongoose.connect(process.env.MONGO_URI, {});
-    const legacyItems = await WatchItem.find({ userId: { $exists: false } }).lean();
-    if (legacyItems.length) {
-      const archive = mongoose.connection.collection("watchitems_legacy_unowned");
-      await archive.bulkWrite(legacyItems.map((item) => {
-        const { _id, ...legacyData } = item;
-        return {
-          updateOne: {
-            filter: { originalId: _id },
-            update: {
-              $setOnInsert: {
-                ...legacyData,
-                originalId: _id,
-                archivedAt: new Date(),
-                archiveReason: "Legacy watch item had no user owner"
-              }
-            },
-            upsert: true
-          }
-        };
-      }));
-      await WatchItem.deleteMany({ userId: { $exists: false } });
-      console.warn(`Archived ${legacyItems.length} unowned legacy watch item(s)`);
-    }
     // Replace the legacy global symbol/type uniqueness index with the
     // per-user index declared by the model. Existing unowned records remain
     // inaccessible and can be cleaned up separately if desired.

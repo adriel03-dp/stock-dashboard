@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import { Check, Loader2, Search } from "lucide-react";
 import { api } from "../utils/api";
 
-export default function StockSymbolCombobox({ value, onChange, disabled = false, autoFocus = false, inputId }) {
+export default function StockSymbolCombobox({ value, onChange, disabled = false, autoFocus = false }) {
   const listId = useId();
   const requestId = useRef(0);
   const [query, setQuery] = useState(value?.symbol || "");
@@ -17,13 +17,13 @@ export default function StockSymbolCombobox({ value, onChange, disabled = false,
 
   useEffect(() => {
     const trimmed = query.trim();
-    const currentRequest = ++requestId.current;
     if (value?.symbol === trimmed.toUpperCase() || trimmed.length < 1) {
       setItems([]);
       setLoading(false);
       return undefined;
     }
 
+    const currentRequest = ++requestId.current;
     const timer = window.setTimeout(async () => {
       setLoading(true);
       setError("");
@@ -49,7 +49,6 @@ export default function StockSymbolCombobox({ value, onChange, disabled = false,
   }, [query, value?.symbol]);
 
   const select = (item) => {
-    requestId.current += 1;
     const selected = { symbol: item.symbol.toUpperCase(), name: item.name || item.symbol };
     setQuery(selected.symbol);
     setItems([]);
@@ -70,7 +69,6 @@ export default function StockSymbolCombobox({ value, onChange, disabled = false,
       <div className="relative">
         <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
-          id={inputId}
           autoFocus={autoFocus}
           type="text"
           role="combobox"

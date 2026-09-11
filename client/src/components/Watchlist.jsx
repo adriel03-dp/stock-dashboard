@@ -29,7 +29,6 @@ export default function Watchlist() {
     let cancelled = false;
 
     const load = async (showLoader = false) => {
-      const version = ++requestVersion.current;
       if (showLoader) setLoading(true);
       setError(null);
       try {
@@ -38,7 +37,7 @@ export default function Watchlist() {
       } catch (err) {
         if (!cancelled && version === requestVersion.current) setError("Failed to load watchlist");
       } finally {
-        if (!cancelled && showLoader && version === requestVersion.current) setLoading(false);
+        if (!cancelled && showLoader) setLoading(false);
       }
     };
 
@@ -123,8 +122,8 @@ export default function Watchlist() {
     <div className="space-y-4">
       <form onSubmit={addItem} className="flex flex-col gap-2 sm:flex-row">
         <div className="min-w-0 flex-1">
-          <label htmlFor="watchlist-stock" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Find a stock</label>
-          <StockSymbolCombobox inputId="watchlist-stock" value={selectedStock} onChange={setSelectedStock} disabled={adding} />
+          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Find a stock</label>
+          <StockSymbolCombobox value={selectedStock} onChange={setSelectedStock} disabled={adding} />
         </div>
         <button
           type="submit"

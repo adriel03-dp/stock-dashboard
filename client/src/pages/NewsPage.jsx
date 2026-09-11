@@ -102,6 +102,11 @@ export default function NewsPage() {
               </div>
 
               <button type="button" onClick={refresh} className="rounded border border-slate-300 px-3 py-2 text-sm">Refresh news</button>
+              {newArticleNotification && (
+                <div className="animate-pulse rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                  ✨ {newArticleNotification} new article{newArticleNotification > 1 ? "s" : ""} arrived!
+                </div>
+              )}
             </div>
 
             {/* Category filter */}

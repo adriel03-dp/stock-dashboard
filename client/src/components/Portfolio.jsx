@@ -155,7 +155,7 @@ export default function Portfolio({ items = [], onUpdated }) {
                 const costValue = avgPrice * quantity;
                 const gainLoss = currentValue == null ? null : currentValue - costValue;
                 const gainLossPercent = gainLoss != null && costValue > 0 ? (gainLoss / costValue) * 100 : null;
-                const isPositive = gainLoss != null ? gainLoss >= 0 : null;
+                const isPositive = gainLoss >= 0;
 
                 return (
                   <motion.div
@@ -172,7 +172,7 @@ export default function Portfolio({ items = [], onUpdated }) {
                         <div className="text-sm font-semibold text-slate-900 dark:text-white">
                           {formatCurrency(currentPrice)}
                         </div>
-                        <div className={`text-xs font-medium ${isPositive == null ? "text-slate-500 dark:text-slate-400" : isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        <div className={`text-xs font-medium ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
                           {gainLossPercent == null ? "Quote unavailable" : `${isPositive ? "+" : ""}${gainLossPercent.toFixed(2)}%`}
                         </div>
                       </div>
