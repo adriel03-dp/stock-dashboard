@@ -311,8 +311,11 @@ router.get("/", async (req, res) => {
 
 
     if (!process.env.MASSIVE_API_KEY) {
-      try { return res.json({ items: await fetchAVStocks(limit, search), nextCursor: null, source: "AlphaVantage" }); }
-      catch { return res.json({ items: await fetchFinnhubStocks(limit, search), nextCursor: null, source: "Finnhub" }); }
+      try {
+        const items = await fetchFinnhubStocks(limit, search);
+        if (items.length) return res.json({ items, nextCursor: null, source: "Finnhub" });
+      } catch { /* try Alpha Vantage below */ }
+      return res.json({ items: await fetchAVStocks(limit, search), nextCursor: null, source: "AlphaVantage" });
     }
 
 
@@ -498,10 +501,12 @@ router.get("/", async (req, res) => {
 
   } catch (err) {
     try {
-      return res.json({ items: await fetchAVStocks(limit, search), nextCursor: null, source: "AlphaVantage" });
+      const items = await fetchFinnhubStocks(limit, search);
+      if (items.length) return res.json({ items, nextCursor: null, source: "Finnhub" });
+      throw new Error("Finnhub returned no quotes");
     } catch {
       try {
-        return res.json({ items: await fetchFinnhubStocks(limit, search), nextCursor: null, source: "Finnhub" });
+        return res.json({ items: await fetchAVStocks(limit, search), nextCursor: null, source: "AlphaVantage" });
       } catch {
         return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" });
       }

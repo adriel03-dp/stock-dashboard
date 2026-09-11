@@ -98,7 +98,8 @@ export async function getStockQuote(symbol, { forceRefresh = false } = {}) {
       quoteCache.set(normalized, entry);
       return withCacheMetadata(value, entry, false);
     } catch (error) {
-      if (cached && age <= STALE_TTL_MS) {
+      const fallbackAge = cached ? Date.now() - cached.updatedAt : Number.POSITIVE_INFINITY;
+      if (cached && fallbackAge <= STALE_TTL_MS) {
         return withCacheMetadata(cached.value, cached, true);
       }
       throw error;

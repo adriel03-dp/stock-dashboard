@@ -8,6 +8,7 @@ const universe = [
   ["JPM", "JPMorgan Chase & Co."], ["V", "Visa Inc."], ["WMT", "Walmart Inc."]
 ];
 const quoteCache = new Map();
+const sectors = { AAPL: "Technology", MSFT: "Technology", NVDA: "Technology", AMZN: "Consumer Discretionary", GOOGL: "Communication Services", META: "Communication Services", TSLA: "Consumer Discretionary", AVGO: "Technology", AMD: "Technology", JPM: "Financials", V: "Financials", WMT: "Consumer Staples" };
 
 function apiKey() {
   if (!process.env.FINNHUB_API_KEY) throw new Error("FINNHUB_API_KEY is not configured");
@@ -28,18 +29,51 @@ export async function fetchFinnhubStocks(limit = 20, search = "") {
   const query = String(search || "").trim().toUpperCase();
   const selected = universe.filter(([symbol, name]) => !query || symbol.includes(query) || name.toUpperCase().includes(query)).slice(0, Math.min(Math.max(limit, 1), universe.length));
   const values = await Promise.all(selected.map(async ([symbol, name]) => { try { const quote = await fetchFinnhubQuote(symbol); return quote ? { ...quote, name, currency: "USD", country: "US", sector: null, volume: null, marketCap: null } : null; } catch { return null; } }));
-  return values.filter(Boolean);
+  const results = values.filter(Boolean);
+  if (selected.length && !results.length) throw new Error("Finnhub returned no quotes");
+  return results;
 }
 
 export async function fetchFinnhubOverview() {
   const stocks = await fetchFinnhubStocks(universe.length);
   if (!stocks.length) throw new Error("Finnhub returned no quotes");
   const quoted = stocks.filter((item) => item.changePercent != null);
-  return { highlights: { topGainers: [...quoted].sort((a, b) => b.changePercent - a.changePercent).slice(0, 5), topLosers: [...quoted].sort((a, b) => a.changePercent - b.changePercent).slice(0, 5), mostActive: stocks.slice(0, 5), topMarketCap: stocks.slice(0, 5) }, breadth: { total: quoted.length, advancing: quoted.filter((x) => x.changePercent > 0).length, declining: quoted.filter((x) => x.changePercent < 0).length, unchanged: quoted.filter((x) => x.changePercent === 0).length }, source: "Finnhub" };
+  return { highlights: { topGainers: [...quoted].sort((a, b) => b.changePercent - a.changePercent).slice(0, 5), topLosers: [...quoted].sort((a, b) => a.changePercent - b.changePercent).slice(0, 5), mostActive: [], topMarketCap: [] }, breadth: { total: quoted.length, advancing: quoted.filter((x) => x.changePercent > 0).length, declining: quoted.filter((x) => x.changePercent < 0).length, unchanged: quoted.filter((x) => x.changePercent === 0).length }, source: "Finnhub" };
 }
 
 export async function fetchFinnhubCrypto() {
   const symbols = ["BINANCE:BTCUSDT", "BINANCE:ETHUSDT", "BINANCE:SOLUSDT"];
   const values = await Promise.all(symbols.map(async (symbol) => { try { const quote = await fetchFinnhubQuote(symbol); if (!quote) return null; const clean = symbol.split(":").pop().replace(/USDT$/, ""); return { ...quote, id: clean.toLowerCase(), symbol: clean, name: clean, current_price: quote.price, price_change_percentage_24h: quote.changePercent, total_volume: null, market_cap: null }; } catch { return null; } }));
-  return values.filter(Boolean);
+  const results = values.filter(Boolean);
+  if (!results.length) throw new Error("Finnhub returned no crypto quotes");
+  return results;
+}
+
+export async function fetchFinnhubSectors() {
+  const stocks = await fetchFinnhubStocks(universe.length);
+  const grouped = new Map();
+  for (const stock of stocks) {
+    const name = sectors[stock.symbol] || "Other";
+    const group = grouped.get(name) || [];
+    group.push(stock);
+    grouped.set(name, group);
+  }
+  return {
+    sectors: [...grouped.entries()].map(([name, companies]) => {
+      const changes = companies.map((item) => item.changePercent).filter(Number.isFinite);
+      return {
+        name,
+        changePercent: changes.length ? changes.reduce((sum, value) => sum + value, 0) / changes.length : null,
+        symbols: companies.length,
+        totalMarketCap: null,
+        totalVolume: null,
+        topConstituents: companies.slice(0, 5),
+        topMovers: {
+          gainers: [...companies].filter((item) => Number.isFinite(item.changePercent)).sort((a, b) => b.changePercent - a.changePercent).slice(0, 3),
+          losers: [...companies].filter((item) => Number.isFinite(item.changePercent)).sort((a, b) => a.changePercent - b.changePercent).slice(0, 3)
+        }
+      };
+    }),
+    source: "Finnhub"
+  };
 }

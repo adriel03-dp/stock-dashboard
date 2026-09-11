@@ -3,7 +3,7 @@ services:
     name: stock-dashboard-api-adriel03
     runtime: node
     plan: free
-    branch: deployement
+    branch: main
     rootDir: server
     buildCommand: npm ci
     startCommand: npm start
