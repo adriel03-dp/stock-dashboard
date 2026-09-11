@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Briefcase, Plus, X } from "lucide-react";
 import { motion } from "framer-motion";
 import Breadcrumb from "../components/Breadcrumb";
@@ -21,8 +21,9 @@ export default function PortfolioPage() {
 
   const [createError, setCreateError] = useState(null);
 
-  const loadPortfolios = () => {
+  const loadPortfolios = useCallback((showLoader = false) => {
     if (!token) return;
+    if (showLoader) setLoading(true);
 
     api.get("/portfolio")
       .then((r) => {
@@ -34,12 +35,16 @@ export default function PortfolioPage() {
         setError(err?.response?.data?.error || "Failed to load portfolios");
         setItems([]);
       })
-      .finally(() => setLoading(false));
-  };
+      .finally(() => {
+        if (showLoader) setLoading(false);
+      });
+  }, [token]);
 
   useEffect(() => {
-    loadPortfolios();
-  }, [token]);
+    loadPortfolios(true);
+    const interval = window.setInterval(() => loadPortfolios(false), 30_000);
+    return () => window.clearInterval(interval);
+  }, [loadPortfolios]);
 
   const handleCreatePortfolio = async (e) => {
     e.preventDefault();

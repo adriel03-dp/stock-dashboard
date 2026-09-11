@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "./Toast";
 import { api } from "../utils/api";
+import StockSymbolCombobox from "./StockSymbolCombobox";
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -20,14 +21,14 @@ export default function Watchlist() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
-  const [newSymbol, setNewSymbol] = useState("");
+  const [selectedStock, setSelectedStock] = useState(null);
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    const load = async () => {
-      setLoading(true);
+    const load = async (showLoader = false) => {
+      if (showLoader) setLoading(true);
       setError(null);
       try {
         const { data } = await api.get("/watchlist");
@@ -35,13 +36,15 @@ export default function Watchlist() {
       } catch (err) {
         if (!cancelled) setError("Failed to load watchlist");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && showLoader) setLoading(false);
       }
     };
 
-    load();
+    load(true);
+    const interval = window.setInterval(() => load(false), 30_000);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
   }, []);
 
@@ -73,20 +76,24 @@ export default function Watchlist() {
 
   const addItem = async (e) => {
     e.preventDefault();
-    if (!newSymbol.trim()) return;
+    if (!selectedStock?.symbol) {
+      toast.warning("Select a stock from the suggestions first");
+      return;
+    }
     
     setAdding(true);
     try {
       const { data } = await api.post("/watchlist", {
-        symbol: newSymbol.toUpperCase(),
+        symbol: selectedStock.symbol,
+        name: selectedStock.name,
         type: "stock"
       });
       setItems((prev) => [data, ...prev]);
-      setNewSymbol("");
-      toast.success(`${newSymbol.toUpperCase()} added to StockDash Watchlist`);
+      setSelectedStock(null);
+      toast.success(`${selectedStock.symbol} added to your watchlist`);
     } catch (err) {
       if (err?.response?.status === 409) {
-        toast.warning(`${newSymbol.toUpperCase()} is already in your StockDash Watchlist`);
+        toast.warning(`${selectedStock.symbol} is already in your watchlist`);
       } else {
         toast.error(err?.response?.data?.error || "Failed to add item");
       }
@@ -109,18 +116,15 @@ export default function Watchlist() {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={addItem} className="flex gap-2">
-        <input
-          type="text"
-          value={newSymbol}
-          onChange={(e) => setNewSymbol(e.target.value)}
-          placeholder="Enter stock symbol (e.g., AAPL)"
-          className="flex-1 rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-        />
+      <form onSubmit={addItem} className="flex flex-col gap-2 sm:flex-row">
+        <div className="min-w-0 flex-1">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Find a stock</label>
+          <StockSymbolCombobox value={selectedStock} onChange={setSelectedStock} disabled={adding} />
+        </div>
         <button
           type="submit"
-          disabled={adding || !newSymbol.trim()}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+          disabled={adding || !selectedStock?.symbol}
+          className="self-end rounded bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
         >
           {adding ? "Adding…" : "Add"}
         </button>
@@ -139,6 +143,9 @@ export default function Watchlist() {
                 <div>
                   <div className="font-semibold text-slate-900 dark:text-white">{it.symbol}</div>
                   <div className="text-sm text-gray-500 dark:text-slate-400">{it.name}</div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    {it.lastProvider ? `${it.lastProvider} · ` : ""}{it.isStale ? "Cached quote" : "Updated quote"}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="font-medium text-slate-900 dark:text-white">{formatPrice(it.lastPrice)}</div>

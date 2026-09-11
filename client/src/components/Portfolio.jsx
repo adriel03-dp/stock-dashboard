@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
+import { Plus, Trash2, X } from "lucide-react";
+import StockSymbolCombobox from "./StockSymbolCombobox";
+import { useToast } from "./Toast";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -35,7 +38,37 @@ function calculateCostBasis(holdings = []) {
 
 export default function Portfolio({ items = [], onUpdated }) {
   const { token } = useAuth();
+  const toast = useToast();
   const [values, setValues] = useState({});
+  const [busyAction, setBusyAction] = useState("");
+
+  async function deletePortfolio(portfolio) {
+    if (!window.confirm(`Delete “${portfolio.name}” and all of its holdings?`)) return;
+    setBusyAction(`portfolio:${portfolio._id}`);
+    try {
+      await api.delete(`/portfolio/${portfolio._id}`);
+      toast.success(`Portfolio “${portfolio.name}” deleted`);
+      onUpdated?.();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || "Could not delete portfolio");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function deleteHolding(portfolioId, symbol) {
+    if (!window.confirm(`Remove ${symbol} from this portfolio?`)) return;
+    setBusyAction(`holding:${portfolioId}:${symbol}`);
+    try {
+      await api.delete(`/portfolio/${portfolioId}/holdings`, { data: { holdingSymbol: symbol } });
+      toast.success(`${symbol} removed from portfolio`);
+      onUpdated?.();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || "Could not remove holding");
+    } finally {
+      setBusyAction("");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +133,16 @@ export default function Portfolio({ items = [], onUpdated }) {
               </div>
               <div className="text-right">
                 <PortfolioValueDisplay holdings={holdings} valueEntry={values[portfolio._id]} />
+                <button
+                  type="button"
+                  onClick={() => deletePortfolio(portfolio)}
+                  disabled={busyAction === `portfolio:${portfolio._id}`}
+                  className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                  aria-label={`Delete ${portfolio.name} portfolio`}
+                >
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
+                  Delete portfolio
+                </button>
               </div>
             </div>
             <HoldingForm portfolioId={portfolio._id} onUpdated={onUpdated}/>
@@ -149,6 +192,15 @@ export default function Portfolio({ items = [], onUpdated }) {
                           {formatSignedCurrency(gainLoss)}
                         </span>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => deleteHolding(portfolio._id, holding.symbol)}
+                        disabled={busyAction === `holding:${portfolio._id}:${holding.symbol}`}
+                        className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                      >
+                        <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                        Remove holding
+                      </button>
                     </div>
                   </motion.div>
                 );
@@ -191,14 +243,52 @@ function HoldingForm({portfolioId, onUpdated}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({symbol:'',quantity:'',avgPrice:''});
+  const [form, setForm] = useState({stock:null,quantity:'',avgPrice:''});
   async function submit(e) {
-    e.preventDefault(); if(busy) return; setBusy(true); setError('');
+    e.preventDefault();
+    if(busy) return;
+    if (!form.stock?.symbol) {
+      setError('Select a stock from the suggestions.');
+      return;
+    }
+    setBusy(true); setError('');
     try {
-      await api.post('/portfolio/' + portfolioId + '/holdings', {symbol:form.symbol.trim().toUpperCase(),quantity:Number(form.quantity),avgPrice:Number(form.avgPrice)});
-      setForm({symbol:'',quantity:'',avgPrice:''}); setOpen(false); onUpdated?.();
+      await api.post('/portfolio/' + portfolioId + '/holdings', {symbol:form.stock.symbol,quantity:Number(form.quantity),avgPrice:Number(form.avgPrice)});
+      setForm({stock:null,quantity:'',avgPrice:''}); setOpen(false); onUpdated?.();
     } catch(err) {setError(err.response?.data?.error || 'Could not save holding. Please try again.');}
     finally {setBusy(false);}
   }
-  return <div className="mt-4"><button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 dark:text-slate-200" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? 'Close holding form' : 'Add holding'}</button>{open && <form onSubmit={submit} className="mt-3 flex flex-wrap items-end gap-3">{[['symbol','Stock symbol','text'],['quantity','Quantity','number'],['avgPrice','Average purchase price (USD)','number']].map(([key,label,type]) => <label key={key} className="text-xs text-slate-600 dark:text-slate-300">{label}<input required type={type} min={key === 'quantity' ? '0.000001' : '0'} step="any" value={form[key]} onChange={e => setForm({...form,[key]:e.target.value})} className="mt-1 block w-44 rounded border border-slate-300 bg-white p-2 text-slate-900"/></label>)}<button disabled={busy} className="rounded bg-blue-600 px-4 py-2 text-sm text-white">{busy ? 'Saving…' : 'Save holding'}</button>{error && <p role="alert" className="w-full text-sm text-red-600">{error}</p>}</form>}</div>;
+  return (
+    <div className="mt-4">
+      <button
+        type="button"
+        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+      >
+        {open ? <X aria-hidden="true" className="h-4 w-4" /> : <Plus aria-hidden="true" className="h-4 w-4" />}
+        {open ? 'Close form' : 'Add holding'}
+      </button>
+      {open && (
+        <form onSubmit={submit} className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+          {error && <p role="alert" className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+          <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_160px_220px_auto] md:items-end">
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              Stock
+              <div className="mt-1"><StockSymbolCombobox value={form.stock} onChange={(stock) => setForm({...form, stock})} disabled={busy} /></div>
+            </label>
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              Quantity purchased
+              <input required type="number" min="0.000001" step="any" value={form.quantity} onChange={e => setForm({...form,quantity:e.target.value})} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"/>
+            </label>
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              Average purchase price (USD)
+              <input required type="number" min="0" step="any" value={form.avgPrice} onChange={e => setForm({...form,avgPrice:e.target.value})} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"/>
+            </label>
+            <button disabled={busy} className="min-h-11 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{busy ? 'Saving…' : 'Save holding'}</button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
 }

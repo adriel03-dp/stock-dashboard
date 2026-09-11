@@ -1,7 +1,7 @@
 ﻿import express from "express";
 import { massiveService } from "../services/massiveService.js";
 import { fetchFinnhubStocks, fetchFinnhubQuote } from "../services/finnhubMarketService.js";
-import { fetchAVStocks, fetchAVQuote } from "../services/alphaVantageService.js";
+import { fetchAVStocks, fetchAVQuote, searchAVSymbols } from "../services/alphaVantageService.js";
 
 const router = express.Router();
 
@@ -128,6 +128,55 @@ function normalizeTickerEvent(item) {
   };
 }
 
+router.get("/suggestions", async (req, res) => {
+  const query = String(req.query.q || "").trim();
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 20);
+
+  if (query.length < 1) return res.json({ items: [] });
+
+  if (process.env.MASSIVE_API_KEY) {
+    try {
+      const response = await massiveService.getTickers({
+        market: "stocks",
+        active: "true",
+        search: query,
+        limit,
+        sort: "ticker.asc"
+      });
+      const items = (response?.results || []).map((ticker) => ({
+        symbol: ticker.ticker,
+        name: ticker.name || ticker.ticker,
+        type: ticker.type || "Stock",
+        region: ticker.locale || null,
+        currency: ticker.currency_name || "USD",
+        provider: "Massive"
+      })).filter((item) => item.symbol);
+      if (items.length) return res.json({ items, source: "Massive" });
+    } catch (error) {
+      console.warn("Massive symbol search failed:", error.message);
+    }
+  }
+
+  if (process.env.ALPHA_VANTAGE_API_KEY) {
+    try {
+      const items = await searchAVSymbols(query, limit);
+      if (items.length) return res.json({ items, source: "AlphaVantage" });
+    } catch (error) {
+      console.warn("Alpha Vantage symbol search failed:", error.message);
+    }
+  }
+
+  try {
+    const items = await fetchFinnhubStocks(limit, query);
+    return res.json({ items, source: "Finnhub" });
+  } catch {
+    return res.status(503).json({
+      error: "Stock suggestions are temporarily unavailable.",
+      code: "DATA_UNAVAILABLE"
+    });
+  }
+});
+
 router.get("/", async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit ?? 100), 1), 500);
   const search = req.query.search;
@@ -252,9 +301,22 @@ router.get("/:symbol", async (req, res) => {
 
   try {
     if (!process.env.MASSIVE_API_KEY) {
-      const quote = await fetchFinnhubQuote(symbol);
+      let quote = null;
+      let overview = null;
+      try {
+        quote = await fetchFinnhubQuote(symbol);
+      } catch {
+        // Fall through to Alpha Vantage below.
+      }
+      if (!quote && process.env.ALPHA_VANTAGE_API_KEY) quote = await fetchAVQuote(symbol);
+      if (process.env.ALPHA_VANTAGE_API_KEY) {
+        try {
+          const { fetchAVOverview } = await import("../services/alphaVantageService.js");
+          overview = await fetchAVOverview(symbol);
+        } catch { /* quote-only response is still useful */ }
+      }
       if (!quote) return res.status(404).json({ error: "Quote not found" });
-      return res.json({ symbol, name: symbol, price: quote.price, change: quote.change, changePercent: quote.changePercent, currency: "USD", metrics: { open: quote.open, previousClose: quote.previousClose, high: quote.high, low: quote.low, volume: null, avgVolume: null, marketCap: null }, profile: {}, indicators: {}, history: {}, dividends: [], events: [] });
+      return res.json({ symbol, name: overview?.name || symbol, price: quote.price, change: quote.change, changePercent: quote.changePercent, currency: overview?.currency || "USD", metrics: { open: quote.open, previousClose: quote.previousClose, high: quote.high, low: quote.low, volume: quote.volume || null, avgVolume: null, marketCap: overview?.marketCap || null, peRatio: overview?.peRatio || null, eps: overview?.eps || null, beta: overview?.beta || null, dividendYield: overview?.dividendYield || null, week52High: overview?.week52High || null, week52Low: overview?.week52Low || null }, profile: overview || {}, indicators: {}, history: {}, dividends: [], events: [], source: quote.provider });
     }
     const [quoteResp, snapshotResp, detailsResp, relatedResp, dividendsResp, eventsResp] = await Promise.all([
       massiveService.getStockQuote(symbol).catch(() => null),

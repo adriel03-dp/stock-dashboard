@@ -17,7 +17,16 @@ const cache = new Map();
 function getCached(key) {
   const entry = cache.get(key);
   if (!entry) return null;
-  if (Date.now() - entry.at > entry.ttl) { cache.delete(key); return null; }
+  if (Date.now() - entry.at > entry.ttl) return null;
+  return entry.value;
+}
+function getStale(key, staleTtlMs = 45 * 60_000) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.at > staleTtlMs) {
+    cache.delete(key);
+    return null;
+  }
   return entry.value;
 }
 function setCached(key, value, ttlMs) {
@@ -29,17 +38,23 @@ async function avGet(params, cacheKey, ttlMs = 60_000) {
     const cached = getCached(cacheKey);
     if (cached) return cached;
   }
-  const { data } = await avClient.get("", { params: { ...params, apikey: apiKey() } });
-  if (data?.["Information"] || data?.["Note"]) {
-    throw new Error(`Alpha Vantage rate limit: ${data["Information"] || data["Note"]}`);
+  try {
+    const { data } = await avClient.get("", { params: { ...params, apikey: apiKey() } });
+    if (data?.["Information"] || data?.["Note"]) {
+      throw new Error(`Alpha Vantage rate limit: ${data["Information"] || data["Note"]}`);
+    }
+    if (cacheKey) setCached(cacheKey, data, ttlMs);
+    return data;
+  } catch (error) {
+    const stale = cacheKey ? getStale(cacheKey) : null;
+    if (stale) return stale;
+    throw error;
   }
-  if (cacheKey) setCached(cacheKey, data, ttlMs);
-  return data;
 }
 
 // Global Quote
 export async function fetchAVQuote(symbol) {
-  const data = await avGet({ function: "GLOBAL_QUOTE", symbol }, `quote:${symbol}`, 45_000);
+  const data = await avGet({ function: "GLOBAL_QUOTE", symbol }, `quote:${symbol}`, 30_000);
   const q = data?.["Global Quote"];
   if (!q || !q["05. price"]) return null;
   const price = Number(q["05. price"]);
@@ -87,6 +102,31 @@ export async function fetchAVOverview(symbol) {
     sharesOutstanding: Number(data.SharesOutstanding) || null,
     provider: "AlphaVantage"
   };
+}
+
+// Symbol search is used by portfolio/watchlist selectors. A long cache keeps
+// type-ahead interactions from consuming the free daily request allowance.
+export async function searchAVSymbols(keywords, limit = 10) {
+  const query = String(keywords || "").trim();
+  if (!query) return [];
+
+  const normalizedQuery = query.toUpperCase();
+  const data = await avGet(
+    { function: "SYMBOL_SEARCH", keywords: query },
+    `symbol_search:${normalizedQuery}`,
+    12 * 60 * 60_000
+  );
+
+  const matches = Array.isArray(data?.bestMatches) ? data.bestMatches : [];
+  return matches.slice(0, Math.min(Math.max(Number(limit) || 10, 1), 20)).map((match) => ({
+    symbol: match["1. symbol"],
+    name: match["2. name"] || match["1. symbol"],
+    type: match["3. type"] || null,
+    region: match["4. region"] || null,
+    currency: match["8. currency"] || null,
+    matchScore: Number(match["9. matchScore"]) || null,
+    provider: "AlphaVantage"
+  })).filter((match) => match.symbol);
 }
 
 // Top Gainers, Losers, Most Active
@@ -299,44 +339,43 @@ const BROAD_STOCK_UNIVERSE = [
 
 export async function fetchAVStocks(limit = 50, search = "") {
   const query = String(search || "").trim().toUpperCase();
-  let universe = BROAD_STOCK_UNIVERSE;
-  if (query) {
-    universe = universe.filter(
-      ([sym, name]) => sym.includes(query) || name.toUpperCase().includes(query)
-    );
-  }
-  const selected = universe.slice(0, Math.min(limit, universe.length));
+  const requestedLimit = Math.min(Math.max(Number(limit) || 50, 1), BROAD_STOCK_UNIVERSE.length);
+  let universe = BROAD_STOCK_UNIVERSE.filter(
+    ([symbol, name]) => !query || symbol.includes(query) || name.toUpperCase().includes(query)
+  );
 
-  // Fetch sequentially to respect AV rate limits (5 req/min free tier)
-  // Cache will be reused across calls, so subsequent pages are fast
-  const items = [];
-  for (const [symbol, name, sector, exchange] of selected) {
-    try {
-      const quote = await fetchAVQuote(symbol); // uses cache if available
-      if (quote) {
-        items.push({
-          symbol,
-          name,
-          price: quote.price,
-          change: quote.change,
-          changePercent: quote.changePercent,
-          open: quote.open,
-          high: quote.high,
-          low: quote.low,
-          previousClose: quote.previousClose,
-          volume: quote.volume,
-          marketCap: null,
-          sector,
-          country: "US",
-          currency: "USD",
-          exchange,
-          provider: "AlphaVantage"
-        });
-      }
-    } catch { /* skip failed quotes */ }
-    // Only throttle if the quote wasn't cached (avoid delays on cache hits)
-    await new Promise((r) => setTimeout(r, 300));
+  // TOP_GAINERS_LOSERS supplies many current quotes in one request. We merge
+  // those values into the curated metadata fallback instead of spending one
+  // free-tier request per ticker.
+  let quoteMap = new Map();
+  try {
+    const movers = await fetchAVTopMovers();
+    const quotes = [...movers.topGainers, ...movers.topLosers, ...movers.mostActive];
+    quoteMap = new Map(quotes.map((quote) => [quote.symbol, quote]));
+  } catch {
+    // The metadata list remains usable while all prices show as unavailable.
   }
 
-  return items;
+  universe = [...universe].sort((a, b) => Number(quoteMap.has(b[0])) - Number(quoteMap.has(a[0])));
+  return universe.slice(0, requestedLimit).map(([symbol, name, sector, exchange]) => {
+    const quote = quoteMap.get(symbol) || {};
+    return {
+      symbol,
+      name,
+      price: quote.price ?? null,
+      change: quote.change ?? null,
+      changePercent: quote.changePercent ?? null,
+      open: quote.open ?? null,
+      high: quote.high ?? null,
+      low: quote.low ?? null,
+      previousClose: quote.previousClose ?? null,
+      volume: quote.volume ?? null,
+      marketCap: null,
+      sector,
+      country: "US",
+      currency: "USD",
+      exchange,
+      provider: quote.provider || "MetadataFallback"
+    };
+  });
 }
