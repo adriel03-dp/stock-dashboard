@@ -95,7 +95,14 @@ router.get("/", async (req, res) => {
             }
           } else if (item.type === "crypto") {
             const coin = await fetchCoinMarket((item.externalId || item.symbol || "").toLowerCase());
-            if (coin?.current_price != null) itemObj.lastPrice = coin.current_price;
+            if (coin?.current_price != null) {
+              itemObj.lastPrice = coin.current_price;
+              itemObj.lastPriceAt = new Date().toISOString();
+              itemObj.lastProvider = "Binance";
+              itemObj.isStale = false;
+            } else {
+              itemObj.isStale = true;
+            }
           }
         } catch (err) {
           // Keep the last persisted price if every live provider is unavailable.
@@ -129,24 +136,31 @@ router.patch("/:id/refresh", async (req, res) => {
     if (!item) return res.status(404).json({ error: "Not found" });
 
     let refreshedQuote = null;
+    let didRefresh = false;
     if (item.type === "stock") {
       refreshedQuote = await getStockQuote(item.symbol, { forceRefresh: true });
       if (refreshedQuote?.price != null) {
         item.lastPrice = refreshedQuote.price;
         item.lastPriceAt = new Date(refreshedQuote.cachedAt);
         item.lastProvider = refreshedQuote.provider;
+        didRefresh = true;
       }
     } else if (item.type === "crypto") {
       try {
         const coin = await fetchCoinMarket((item.externalId || item.symbol || "").toLowerCase());
-        if (coin?.current_price != null) item.lastPrice = coin.current_price;
+        if (coin?.current_price != null) {
+          item.lastPrice = coin.current_price;
+          item.lastPriceAt = new Date();
+          item.lastProvider = "Binance";
+          didRefresh = true;
+        }
       } catch (e) {
         /* ignore */
       }
     }
     await item.save();
     const result = item.toObject();
-    result.isStale = Boolean(refreshedQuote?.isStale);
+    result.isStale = !didRefresh || Boolean(refreshedQuote?.isStale);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: "Failed to refresh" });

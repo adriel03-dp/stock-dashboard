@@ -170,6 +170,7 @@ async function listTopCoins(limitInput, res) {
   } catch (err) {
     try {
       const coins = await fetchFinnhubCrypto();
+      if (!coins.length) throw new Error("Finnhub returned no crypto quotes");
       return res.json(coins.slice(0, Math.min(Math.max(Number(limitInput ?? 20), 1), coins.length)));
     } catch {
       return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" });

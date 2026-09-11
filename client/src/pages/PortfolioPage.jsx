@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Briefcase, Plus, X } from "lucide-react";
 import { motion } from "framer-motion";
 import Breadcrumb from "../components/Breadcrumb";
@@ -20,17 +20,21 @@ export default function PortfolioPage() {
   const [creatingPortfolio, setCreatingPortfolio] = useState(false);
 
   const [createError, setCreateError] = useState(null);
+  const requestVersion = useRef(0);
 
   const loadPortfolios = useCallback((showLoader = false) => {
     if (!token) return;
     if (showLoader) setLoading(true);
 
+    const version = ++requestVersion.current;
     api.get("/portfolio")
       .then((r) => {
+        if (version !== requestVersion.current) return;
         setItems(r.data || []);
         setError(null);
       })
       .catch((err) => {
+        if (version !== requestVersion.current) return;
         console.error("Failed to load portfolios", err);
         setError(err?.response?.data?.error || "Failed to load portfolios");
         setItems([]);
@@ -57,6 +61,7 @@ export default function PortfolioPage() {
     }
 
     setCreatingPortfolio(true);
+    requestVersion.current += 1;
 
     try {
       const { data: created } = await api.post("/portfolio", {
@@ -117,17 +122,19 @@ export default function PortfolioPage() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Create Portfolio</h2>
               <button
+                type="button"
                 onClick={() => setShowCreateForm(false)}
+                aria-label="Close create portfolio dialog"
                 className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
-                <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                <X aria-hidden="true" className="h-5 w-5 text-slate-500 dark:text-slate-400" />
               </button>
             </div>
 
             <form onSubmit={handleCreatePortfolio} className="space-y-4">
               {createError && <p role="alert" className="text-sm text-red-600">{createError}</p>}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label htmlFor="portfolio-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Portfolio Name *
                 </label>
                 <input
@@ -140,7 +147,7 @@ export default function PortfolioPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label htmlFor="portfolio-description" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Description (Optional)
                 </label>
                 <textarea id="portfolio-description"

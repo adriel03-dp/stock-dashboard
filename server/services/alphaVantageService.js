@@ -164,7 +164,9 @@ export async function fetchAVMarketOverview(limit = 5) {
   const topGainers = movers.topGainers.slice(0, limit);
   const topLosers = movers.topLosers.slice(0, limit);
   const mostActive = movers.mostActive.slice(0, limit);
-  const topMarketCap = movers.mostActive.slice(0, limit);
+  // Alpha Vantage's movers response has no market-cap field. Do not label
+  // volume-ranked symbols as market-cap leaders.
+  const topMarketCap = [];
 
   const allQuoted = [...movers.topGainers, ...movers.topLosers, ...movers.mostActive];
   const unique = [...new Map(allQuoted.map((x) => [x.symbol, x])).values()];

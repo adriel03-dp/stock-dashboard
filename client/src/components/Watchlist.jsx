@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useToast } from "./Toast";
 import { api } from "../utils/api";
 import StockSymbolCombobox from "./StockSymbolCombobox";
@@ -23,20 +23,22 @@ export default function Watchlist() {
   const [busyId, setBusyId] = useState(null);
   const [selectedStock, setSelectedStock] = useState(null);
   const [adding, setAdding] = useState(false);
+  const requestVersion = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async (showLoader = false) => {
+      const version = ++requestVersion.current;
       if (showLoader) setLoading(true);
       setError(null);
       try {
         const { data } = await api.get("/watchlist");
-        if (!cancelled) setItems(Array.isArray(data) ? data : []);
+        if (!cancelled && version === requestVersion.current) setItems(Array.isArray(data) ? data : []);
       } catch (err) {
-        if (!cancelled) setError("Failed to load watchlist");
+        if (!cancelled && version === requestVersion.current) setError("Failed to load watchlist");
       } finally {
-        if (!cancelled && showLoader) setLoading(false);
+        if (!cancelled && showLoader && version === requestVersion.current) setLoading(false);
       }
     };
 
@@ -49,6 +51,7 @@ export default function Watchlist() {
   }, []);
 
   const remove = async (id) => {
+    requestVersion.current += 1;
     setBusyId(id);
     try {
       await api.delete(`/watchlist/${id}`);
@@ -62,6 +65,7 @@ export default function Watchlist() {
   };
 
   const refresh = async (id) => {
+    requestVersion.current += 1;
     setBusyId(id);
     try {
       const { data } = await api.patch(`/watchlist/${id}/refresh`);
@@ -81,6 +85,7 @@ export default function Watchlist() {
       return;
     }
     
+    requestVersion.current += 1;
     setAdding(true);
     try {
       const { data } = await api.post("/watchlist", {
@@ -118,8 +123,8 @@ export default function Watchlist() {
     <div className="space-y-4">
       <form onSubmit={addItem} className="flex flex-col gap-2 sm:flex-row">
         <div className="min-w-0 flex-1">
-          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Find a stock</label>
-          <StockSymbolCombobox value={selectedStock} onChange={setSelectedStock} disabled={adding} />
+          <label htmlFor="watchlist-stock" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Find a stock</label>
+          <StockSymbolCombobox inputId="watchlist-stock" value={selectedStock} onChange={setSelectedStock} disabled={adding} />
         </div>
         <button
           type="submit"

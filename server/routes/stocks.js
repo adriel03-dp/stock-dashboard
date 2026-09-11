@@ -1,9 +1,44 @@
 ﻿import express from "express";
 import { massiveService } from "../services/massiveService.js";
-import { fetchFinnhubStocks, fetchFinnhubQuote } from "../services/finnhubMarketService.js";
-import { fetchAVStocks, fetchAVQuote, searchAVSymbols } from "../services/alphaVantageService.js";
+import { fetchFinnhubStocks } from "../services/finnhubMarketService.js";
+import { fetchAVStocks, searchAVSymbols } from "../services/alphaVantageService.js";
+import { getStockQuote } from "../services/quoteService.js";
 
 const router = express.Router();
+
+function filterFallbackStocks(items, { sector, country } = {}) {
+  const normalizedSector = String(sector || "").trim().toLowerCase();
+  const normalizedCountry = String(country || "").trim().toLowerCase();
+  return items.filter((item) => {
+    const sectorMatches = !normalizedSector || String(item.sector || "").toLowerCase() === normalizedSector;
+    const itemCountry = String(item.country || item.region || "").toLowerCase();
+    const countryMatches = !normalizedCountry || itemCountry === normalizedCountry || (normalizedCountry === "us" && itemCountry === "united states");
+    return sectorMatches && countryMatches;
+  });
+}
+
+async function fetchFallbackStocks(limit, search, filters) {
+  const errors = [];
+  try {
+    const items = await fetchFinnhubStocks(limit, search);
+    const filtered = filterFallbackStocks(items, filters);
+    if (filtered.length) return { items: filtered, nextCursor: null, source: "Finnhub" };
+  } catch (error) {
+    errors.push(`Finnhub: ${error.message}`);
+  }
+  try {
+    const items = await fetchAVStocks(limit, search);
+    const filtered = filterFallbackStocks(items, filters);
+    if (filtered.some((item) => item.price != null)) return { items: filtered, nextCursor: null, source: "AlphaVantage" };
+    // Keep metadata as the final degraded response, never ahead of live data.
+    return { items: filtered, nextCursor: null, source: "MetadataFallback", degraded: true };
+  } catch (error) {
+    errors.push(`Alpha Vantage: ${error.message}`);
+  }
+  const error = new Error(errors.join("; "));
+  error.code = "DATA_UNAVAILABLE";
+  throw error;
+}
 
 const RANGE_CONFIG = {
 "1D": { multiplier: 5, timespan: "minute", lookbackHours: 24 },
@@ -157,6 +192,15 @@ router.get("/suggestions", async (req, res) => {
     }
   }
 
+  if (process.env.FINNHUB_API_KEY) {
+    try {
+      const items = await fetchFinnhubStocks(limit, query);
+      if (items.length) return res.json({ items, source: "Finnhub" });
+    } catch (error) {
+      console.warn("Finnhub symbol search failed:", error.message);
+    }
+  }
+
   if (process.env.ALPHA_VANTAGE_API_KEY) {
     try {
       const items = await searchAVSymbols(query, limit);
@@ -166,15 +210,7 @@ router.get("/suggestions", async (req, res) => {
     }
   }
 
-  try {
-    const items = await fetchFinnhubStocks(limit, query);
-    return res.json({ items, source: "Finnhub" });
-  } catch {
-    return res.status(503).json({
-      error: "Stock suggestions are temporarily unavailable.",
-      code: "DATA_UNAVAILABLE"
-    });
-  }
+  return res.json({ items: [] });
 });
 
 router.get("/", async (req, res) => {
@@ -186,8 +222,8 @@ router.get("/", async (req, res) => {
     const country = req.query.country;
 
     if (!process.env.MASSIVE_API_KEY) {
-      try { return res.json({ items: await fetchAVStocks(limit, search), nextCursor: null, source: "AlphaVantage" }); }
-      catch { return res.json({ items: await fetchFinnhubStocks(limit, search), nextCursor: null, source: "Finnhub" }); }
+      try { return res.json(await fetchFallbackStocks(limit, search, { sector, country })); }
+      catch { return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" }); }
     }
 
     const params = {
@@ -282,13 +318,9 @@ router.get("/", async (req, res) => {
     });
   } catch (err) {
     try {
-      return res.json({ items: await fetchAVStocks(limit, search), nextCursor: null, source: "AlphaVantage" });
+      return res.json(await fetchFallbackStocks(limit, search, { sector: req.query.sector, country: req.query.country }));
     } catch {
-      try {
-        return res.json({ items: await fetchFinnhubStocks(limit, search), nextCursor: null, source: "Finnhub" });
-      } catch {
-        return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" });
-      }
+      return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" });
     }
   }
 });
@@ -304,11 +336,10 @@ router.get("/:symbol", async (req, res) => {
       let quote = null;
       let overview = null;
       try {
-        quote = await fetchFinnhubQuote(symbol);
+        quote = await getStockQuote(symbol);
       } catch {
-        // Fall through to Alpha Vantage below.
+        return res.status(503).json({ error: "Stock data is unavailable from the configured providers.", code: "DATA_UNAVAILABLE" });
       }
-      if (!quote && process.env.ALPHA_VANTAGE_API_KEY) quote = await fetchAVQuote(symbol);
       if (process.env.ALPHA_VANTAGE_API_KEY) {
         try {
           const { fetchAVOverview } = await import("../services/alphaVantageService.js");
@@ -361,7 +392,7 @@ router.get("/:symbol", async (req, res) => {
     };
 
     if (summary.price == null) {
-      const liveQuote = await fetchFinnhubQuote(symbol);
+      const liveQuote = await getStockQuote(symbol);
       if (!liveQuote) return res.status(404).json({ error: "Quote not found" });
       return res.json({
         symbol,
@@ -512,10 +543,24 @@ router.get("/:symbol", async (req, res) => {
         details
       }
     });
-  } catch (err) {
-    console.error(`/stocks/${req.params.symbol} error:`, err?.details || err?.message || err);
-    res.status(err.status || 500).json({ error: "Failed to load stock detail", details: err.message });
-  }
+  } catch (err) {
+    console.error(`/stocks/${req.params.symbol} error:`, err?.details || err?.message || err);
+    try {
+      const quote = await getStockQuote(symbol);
+      return res.json({
+        symbol,
+        name: symbol,
+        price: quote.price,
+        change: quote.change,
+        changePercent: quote.changePercent,
+        currency: "USD",
+        metrics: { open: quote.open, previousClose: quote.previousClose, high: quote.high, low: quote.low, volume: quote.volume || null, avgVolume: null, marketCap: null },
+        profile: {}, indicators: {}, history: {}, dividends: [], related: [], events: [], source: quote.provider
+      });
+    } catch (fallbackError) {
+      return res.status(503).json({ error: "Stock data is unavailable from the configured providers.", code: "DATA_UNAVAILABLE" });
+    }
+  }
 });
 
 export default router;

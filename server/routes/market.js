@@ -1,9 +1,27 @@
 ﻿import express from "express";
 import { massiveService } from "../services/massiveService.js";
-import { fetchFinnhubOverview } from "../services/finnhubMarketService.js";
+import { fetchFinnhubOverview, fetchFinnhubSectors } from "../services/finnhubMarketService.js";
 import { fetchAVMarketOverview, fetchAVSectors } from "../services/alphaVantageService.js";
 
 const router = express.Router();
+
+async function fetchFallbackOverview(limit) {
+  const errors = [];
+  try { return await fetchFinnhubOverview(); }
+  catch (error) { errors.push(`Finnhub: ${error.message}`); }
+  try { return await fetchAVMarketOverview(limit); }
+  catch (error) { errors.push(`Alpha Vantage: ${error.message}`); }
+  throw new Error(errors.join("; "));
+}
+
+async function fetchFallbackSectors() {
+  const errors = [];
+  try { return await fetchFinnhubSectors(); }
+  catch (error) { errors.push(`Finnhub: ${error.message}`); }
+  try { return await fetchAVSectors(); }
+  catch (error) { errors.push(`Alpha Vantage: ${error.message}`); }
+  throw new Error(errors.join("; "));
+}
 
 function extractList(payload) {
   const list = payload?.results || payload?.tickers || payload?.data || payload?.items || [];
@@ -60,8 +78,8 @@ router.get("/overview", async (req, res) => {
   try {
     const limit = Number(req.query.limit ?? 5);
     if (!process.env.MASSIVE_API_KEY) {
-      try { return res.json(await fetchAVMarketOverview(limit)); }
-      catch { try { return res.json(await fetchFinnhubOverview()); } catch { return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" }); } }
+      try { return res.json(await fetchFallbackOverview(limit)); }
+      catch (error) { console.warn("Market overview fallbacks failed:", error.message); return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" }); }
     }
     const [statusRaw, gainersRaw, losersRaw, activesRaw, marketCapRaw, breadthRaw] = await Promise.all([
       massiveService.getMarketStatusNow().catch((err) => ({ error: err.message })),
@@ -78,13 +96,16 @@ router.get("/overview", async (req, res) => {
     const topMarketCap = normalizeList(marketCapRaw).slice(0, limit);
     console.log("Market overview - gainers:", topGainers.length, "losers:", topLosers.length, "actives:", mostActive.length, "marketCap:", topMarketCap.length);
     if (!topGainers.length && !topLosers.length && !mostActive.length && !topMarketCap.length) {
-      try { return res.json(await fetchAVMarketOverview(limit)); }
-      catch { try { return res.json(await fetchFinnhubOverview()); } catch { return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" }); } }
+      try { return res.json(await fetchFallbackOverview(limit)); }
+      catch (error) { console.warn("Market overview fallbacks failed:", error.message); return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" }); }
     }
     const breadthItems = normalizeList(breadthRaw);
     const breadth = summarizeBreadth(breadthItems);
     res.json({ marketStatus: statusRaw?.results || statusRaw, highlights: { topGainers, topLosers, mostActive, topMarketCap }, breadth, raw: { status: statusRaw, gainers: gainersRaw, losers: losersRaw, actives: activesRaw, marketCap: marketCapRaw } });
-  } catch (err) { return res.status(503).json({ error: "Market data is unavailable from the configured provider. Please try again later.", code: "DATA_UNAVAILABLE" }); }
+  } catch (err) {
+    try { return res.json(await fetchFallbackOverview(Number(req.query.limit ?? 5))); }
+    catch (fallbackError) { console.warn("Market overview failed:", err.message, fallbackError.message); return res.status(503).json({ error: "Market data is unavailable from the configured provider. Please try again later.", code: "DATA_UNAVAILABLE" }); }
+  }
 });
 
 router.get("/sectors", async (req, res) => {
@@ -92,7 +113,7 @@ router.get("/sectors", async (req, res) => {
     const limit = Math.min(Math.max(Number(req.query.limit ?? 200), 20), 500);
     const locale = req.query.locale || "us";
     if (!process.env.MASSIVE_API_KEY) {
-      try { return res.json(await fetchAVSectors()); }
+      try { return res.json(await fetchFallbackSectors()); }
       catch (err) { return res.status(503).json({ error: "Market data is unavailable from the configured provider. Please try again later.", code: "DATA_UNAVAILABLE" }); }
     }
     const tickersResponse = await massiveService.getTickers({ market: "stocks", active: "true", limit, sort: "market_cap.desc", locale });
@@ -149,12 +170,12 @@ router.get("/sectors", async (req, res) => {
     }).sort((a, b) => (Number(b.totalMarketCap || 0) || 0) - (Number(a.totalMarketCap || 0) || 0));
     const hasValidData = sectors.some(s => s.topConstituents?.length > 0 || s.topMovers?.gainers?.length > 0);
     if (!hasValidData) {
-      try { return res.json(await fetchAVSectors()); }
+      try { return res.json(await fetchFallbackSectors()); }
       catch (err) { return res.status(503).json({ error: "Market data is unavailable from the configured provider. Please try again later.", code: "DATA_UNAVAILABLE" }); }
     }
     res.json({ sectors });
   } catch (err) {
-    try { return res.json(await fetchAVSectors()); }
+    try { return res.json(await fetchFallbackSectors()); }
     catch { return res.status(503).json({ error: "Market data is unavailable from the configured provider. Please try again later.", code: "DATA_UNAVAILABLE" }); }
   }
 });
