@@ -2,6 +2,7 @@
 import { massiveService } from "../services/massiveService.js";
 import { fetchFinnhubStocks, fetchFinnhubQuote } from "../services/finnhubMarketService.js";
 import { fetchAVStocks, fetchAVQuote, searchAVSymbols } from "../services/alphaVantageService.js";
+import { getStockQuote } from "../services/quoteService.js";
 
 const router = express.Router();
 
@@ -629,7 +630,7 @@ router.get("/:symbol", async (req, res) => {
     };
 
     if (summary.price == null) {
-      const liveQuote = await fetchFinnhubQuote(symbol);
+      const liveQuote = await getStockQuote(symbol);
       if (!liveQuote) return res.status(404).json({ error: "Quote not found" });
       return res.json({
         symbol,
@@ -920,9 +921,12 @@ router.get("/:symbol", async (req, res) => {
 
   } catch (err) {
 
-    console.error(`/stocks/${req.params.symbol} error:`, err?.details || err?.message || err);
-
-    res.status(err.status || 500).json({ error: "Failed to load stock detail", details: err.message });
+    try {
+      const quote = await getStockQuote(symbol);
+      return res.json({ symbol, name: symbol, ...quote, currency: "USD", metrics: { open: quote.open, high: quote.high, low: quote.low, previousClose: quote.previousClose }, profile: {}, indicators: {}, history: {}, dividends: [], events: [], source: quote.provider });
+    } catch {
+      return res.status(503).json({ error: "Stock quote temporarily unavailable", code: "DATA_UNAVAILABLE" });
+    }
 
   }
 

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { fetchCoinbaseCoin, fetchCoinbaseCoins } from "./coinbaseService.js";
 
 const binanceClient = axios.create({
   baseURL: "https://api.binance.com/api/v3",
@@ -23,14 +24,13 @@ async function request(url, params = {}) {
 
 // Get top cryptocurrencies by market cap
 export async function fetchTopCoins(limit = 20) {
+  try { return await fetchCoinbaseCoins(limit); } catch { /* retain Binance as a secondary source */ }
   try {
     // Get top coins by volume from Binance
     const data = await request("/ticker/24hr", {
       symbols: JSON.stringify([
-        '"BTCUSDT"', '"ETHUSDT"', '"BNBUSDT"', '"XRPUSDT"', '"SOLUSDT"',
-        '"ADAUSDT"', '"DOGEUSDT"', '"DOTUSDT"', '"LINKUSDT"', '"AVAXUSDT"',
-        '"MATICUSDT"', '"LTCUSDT"', '"UNIUSDT"', '"ATOMUSDT"', '"XLMUSDT"',
-        '"VETUDT"', '"FILUSDT"', '"SANDUSDT"', '"MANAUSDT"', '"APTUSDT"'
+        'BTCUSDT', 'ETHUSDT', 'XRPUSDT', 'SOLUSDT', 'ADAUSDT',
+        'DOGEUSDT', 'DOTUSDT', 'LINKUSDT', 'AVAXUSDT', 'LTCUSDT'
       ])
     });
 
@@ -54,6 +54,7 @@ export async function fetchTopCoins(limit = 20) {
 // Get specific coin market data
 async function fetchCoinMarketUncached(identifier) {
   if (!identifier) return null;
+  try { return await fetchCoinbaseCoin(identifier); } catch { /* try the secondary source */ }
 
   try {
     const symbol = identifier.toUpperCase();

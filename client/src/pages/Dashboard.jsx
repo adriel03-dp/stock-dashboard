@@ -190,7 +190,7 @@ export default function Dashboard() {
   }, [overview]);
 
   const metricCards = useMemo(() => {
-    const liveHighlights = overview?.highlights?.topMarketCap || overview?.highlights?.mostActive || overview?.highlights?.topGainers || [];
+    const liveHighlights = [overview?.highlights?.topMarketCap, overview?.highlights?.mostActive, overview?.highlights?.topGainers].find((items) => Array.isArray(items) && items.length > 0) || [];
     if (liveHighlights.length) {
       return liveHighlights.slice(0, 4).map((item) => ({
         title: item.symbol || item.name || "Market quote",

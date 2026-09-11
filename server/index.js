@@ -49,6 +49,7 @@ app.get("/healthz", (req, res) => {
   const databaseReady = mongoose.connection.readyState === 1;
   res.status(databaseReady ? 200 : 503).json({
     status: databaseReady ? "ok" : "not_ready",
+    revision: process.env.RENDER_GIT_COMMIT || null,
     database: databaseReady ? "connected" : "disconnected"
   });
 });

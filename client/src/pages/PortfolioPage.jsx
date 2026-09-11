@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Briefcase, Plus, X } from "lucide-react";
 import { motion } from "framer-motion";
 import Breadcrumb from "../components/Breadcrumb";
@@ -12,6 +12,7 @@ import { useToast } from "../components/Toast";
 export default function PortfolioPage() {
   const { token } = useAuth();
   const toast = useToast();
+  const requestVersion = useRef(0);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -8,6 +8,9 @@ const universe = [
   ["JPM", "JPMorgan Chase & Co."], ["V", "Visa Inc."], ["WMT", "Walmart Inc."]
 ];
 const quoteCache = new Map();
+const pendingQuotes = new Map();
+const FRESH_TTL_MS = 60_000;
+const STALE_TTL_MS = 45 * 60_000;
 const sectors = { AAPL: "Technology", MSFT: "Technology", NVDA: "Technology", AMZN: "Consumer Discretionary", GOOGL: "Communication Services", META: "Communication Services", TSLA: "Consumer Discretionary", AVGO: "Technology", AMD: "Technology", JPM: "Financials", V: "Financials", WMT: "Consumer Staples" };
 
 function apiKey() {
@@ -16,13 +19,28 @@ function apiKey() {
 }
 
 export async function fetchFinnhubQuote(symbol) {
+  symbol = String(symbol).trim().toUpperCase();
   const cached = quoteCache.get(symbol);
-  if (cached && Date.now() - cached.at < 45_000) return cached.value;
-  const { data } = await client.get("/quote", { params: { symbol, token: apiKey() } });
-  if (!data || data.c == null || data.c === 0) return null;
+  if (cached && Date.now() - cached.at < FRESH_TTL_MS) return cached.value;
+  if (pendingQuotes.has(symbol)) return pendingQuotes.get(symbol);
+  const request = (async () => {
+  try {
+  const { data } = await client.get("/quote", { params: { symbol, token: apiKey().trim() } });
+  if (!data || !Number.isFinite(Number(data.c)) || Number(data.c) <= 0) throw new Error("Finnhub returned no usable quote");
   const value = { symbol, price: Number(data.c), change: data.d == null ? null : Number(data.d), changePercent: data.dp == null ? null : Number(data.dp), open: data.o == null ? null : Number(data.o), high: data.h == null ? null : Number(data.h), low: data.l == null ? null : Number(data.l), previousClose: data.pc == null ? null : Number(data.pc), provider: "Finnhub" };
   quoteCache.set(symbol, { at: Date.now(), value });
   return value;
+  } catch (error) {
+    if (cached && Date.now() - cached.at <= STALE_TTL_MS) return { ...cached.value, isStale: true };
+    // Avoid logging Axios request configuration, which contains the API key.
+    console.warn(`Finnhub quote unavailable for ${symbol}: ${error.response?.status || error.code || 'NO_QUOTE'}`);
+    throw new Error("Finnhub quote unavailable");
+  } finally {
+    pendingQuotes.delete(symbol);
+  }
+  })();
+  pendingQuotes.set(symbol, request);
+  return request;
 }
 
 export async function fetchFinnhubStocks(limit = 20, search = "") {

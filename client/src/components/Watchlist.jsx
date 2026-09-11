@@ -29,6 +29,7 @@ export default function Watchlist() {
     let cancelled = false;
 
     const load = async (showLoader = false) => {
+      const version = ++requestVersion.current;
       if (showLoader) setLoading(true);
       setError(null);
       try {

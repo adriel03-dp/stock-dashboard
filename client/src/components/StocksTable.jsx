@@ -7,6 +7,7 @@ const compactFormatter = new Intl.NumberFormat("en-US", {
 });
 
 function formatPrice(value, currency = "USD") {
+  if (value == null || value === "") return "—";
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return "—";
 
@@ -57,6 +58,7 @@ function formatPercent(value) {
 }
 
 function formatNumber(value) {
+  if (value == null || value === "") return "—";
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return "—";
   return compactFormatter.format(numeric);

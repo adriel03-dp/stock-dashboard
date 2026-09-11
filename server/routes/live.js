@@ -153,6 +153,7 @@ router.get("/stock/:symbol/history", async (req, res) => {
 });
 
 router.get("/crypto/:id", async (req, res) => {
+  if (req.params.id === "top") return listTopCoins(req.query.limit, res);
   try {
     const coin = await fetchCoinMarket(req.params.id);
     if (!coin) return res.status(404).json({ error: "Coin not found" });
