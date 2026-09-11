@@ -1,8 +1,8 @@
 import Portfolio from "../models/Portfolio.js";
-import { fetchMassiveStockSummary } from "../utils/stockData.js";
+import { getStockQuote } from "../services/quoteService.js";
 
 async function enrichPortfolioWithLivePrices(portfolio) {
-  if (!process.env.MASSIVE_API_KEY || !portfolio.holdings || !portfolio.holdings.length) {
+  if (!portfolio.holdings || !portfolio.holdings.length) {
     return portfolio;
   }
 
@@ -11,7 +11,7 @@ async function enrichPortfolioWithLivePrices(portfolio) {
   enrichedPortfolio.holdings = await Promise.all(
     enrichedPortfolio.holdings.map(async (holding) => {
       try {
-        const summary = await fetchMassiveStockSummary(holding.symbol);
+        const summary = await getStockQuote(holding.symbol);
         if (summary?.price != null) {
           return {
             ...holding,
@@ -19,7 +19,10 @@ async function enrichPortfolioWithLivePrices(portfolio) {
             change: summary.change,
             changePercent: summary.changePercent,
             currentValue: summary.price * holding.quantity,
-            gainLoss: (summary.price * holding.quantity) - (holding.avgPrice * holding.quantity)
+            gainLoss: (summary.price * holding.quantity) - (holding.avgPrice * holding.quantity),
+            quoteProvider: summary.provider,
+            quoteUpdatedAt: summary.cachedAt,
+            quoteIsStale: summary.isStale
           };
         }
       } catch (err) {
@@ -64,13 +67,13 @@ export const createPortfolio = async (req, res) => {
 
     const { name, description } = req.body;
 
-    if (!name) {
+    if (typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ error: "Portfolio name is required" });
     }
 
     const portfolio = new Portfolio({
       userId,
-      name,
+      name: name.trim(),
       description: description || "",
       holdings: []
     });
@@ -119,9 +122,13 @@ export const updatePortfolio = async (req, res) => {
 
     const { name, description } = req.body;
 
+    if (typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ error: "Portfolio name is required" });
+    }
+
     const portfolio = await Portfolio.findOneAndUpdate(
       { _id: req.params.id, userId },
-      { name, description, updatedAt: new Date() },
+      { name: name.trim(), description: description || "", updatedAt: new Date() },
       { new: true }
     );
 
@@ -170,10 +177,12 @@ export const addHolding = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { symbol, quantity, avgPrice } = req.body;
+    const symbol = typeof req.body.symbol === "string" ? req.body.symbol.trim().toUpperCase() : "";
+    const quantity = Number(req.body.quantity);
+    const avgPrice = Number(req.body.avgPrice);
 
-    if (!symbol || !quantity || !avgPrice) {
-      return res.status(400).json({ error: "All fields required" });
+    if (!symbol || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(avgPrice) || avgPrice < 0 || req.body.avgPrice == null || req.body.avgPrice === "") {
+      return res.status(400).json({ error: "Enter a symbol, a positive quantity, and a non-negative average price." });
     }
 
     const portfolio = await Portfolio.findOne({
@@ -190,8 +199,9 @@ export const addHolding = async (req, res) => {
     );
 
     if (existingHolding) {
-      existingHolding.quantity += quantity;
-      existingHolding.avgPrice = (existingHolding.avgPrice + avgPrice) / 2;
+      const totalQuantity = existingHolding.quantity + quantity;
+      existingHolding.avgPrice = (existingHolding.avgPrice * existingHolding.quantity + avgPrice * quantity) / totalQuantity;
+      existingHolding.quantity = totalQuantity;
     } else {
       portfolio.holdings.push({ symbol, quantity, avgPrice, purchaseDate: new Date() });
     }
@@ -214,7 +224,13 @@ export const removeHolding = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { holdingSymbol } = req.body;
+    const holdingSymbol = typeof req.body.holdingSymbol === "string"
+      ? req.body.holdingSymbol.trim().toUpperCase()
+      : "";
+
+    if (!holdingSymbol) {
+      return res.status(400).json({ error: "Holding symbol is required" });
+    }
 
     const portfolio = await Portfolio.findOne({
       _id: req.params.id,
@@ -226,7 +242,7 @@ export const removeHolding = async (req, res) => {
     }
 
     portfolio.holdings = portfolio.holdings.filter(
-      (h) => h.symbol.toUpperCase() !== holdingSymbol.toUpperCase()
+      (h) => h.symbol.toUpperCase() !== holdingSymbol
     );
 
     portfolio.updatedAt = new Date();

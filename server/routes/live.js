@@ -9,7 +9,8 @@ import { fetchCoinMarket, fetchTopCoins } from "../services/binanceService.js";
 import { fetchMassiveStockSummary } from "../utils/stockData.js";
 import { massiveService } from "../services/massiveService.js";
 import { selectHub } from "../realtime/stockStreamHub.js";
-import { generateMockTopCoins } from "../services/mockData.js";
+import { fetchFinnhubCrypto } from "../services/finnhubMarketService.js";
+
 
 const router = express.Router();
 
@@ -167,7 +168,12 @@ async function listTopCoins(limitInput, res) {
     const coins = await fetchTopCoins(Math.min(Math.max(limit, 1), 250));
     return res.json(coins);
   } catch (err) {
-    return res.json(generateMockTopCoins(Number(limitInput ?? 20)));
+    try {
+      const coins = await fetchFinnhubCrypto();
+      return res.json(coins.slice(0, Math.min(Math.max(Number(limitInput ?? 20), 1), coins.length)));
+    } catch {
+      return res.status(503).json({ error: "Market data is unavailable from the configured providers. Please try again later.", code: "DATA_UNAVAILABLE" });
+    }
   }
 }
 

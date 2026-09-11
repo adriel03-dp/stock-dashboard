@@ -11,6 +11,7 @@ import marketRoutes from "./routes/market.js";
 import authRoutes from "./routes/auth.js";
 import newsStreamingService from "./services/newsStreamingService.js";
 import FinnhubNewsService from "./services/finnhubNewsService.js";
+import WatchItem from "./models/WatchItem.js";
 
 dotenv.config();
 const app = express();
@@ -22,6 +23,10 @@ app.use(express.json());
 async function connectDB() {
   try {
     await mongoose.connect(process.env.MONGO_URI, {});
+    // Replace the legacy global symbol/type uniqueness index with the
+    // per-user index declared by the model. Existing unowned records remain
+    // inaccessible and can be cleaned up separately if desired.
+    await WatchItem.syncIndexes();
     console.log("MongoDB Connected");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);

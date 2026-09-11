@@ -1,5 +1,4 @@
 import axios from "axios";
-import { generateMockNews } from "./mockData.js";
 
 const newsAggregator = {
   /**
@@ -18,7 +17,7 @@ const newsAggregator = {
       const response = await axios.get("https://finnhub.io/api/v1/news", {
         params: {
           token: finnhubKey,
-          limit: params.limit || 50,
+          category: "general",
           minId: 0
         },
         timeout: 8000
@@ -34,12 +33,13 @@ const newsAggregator = {
           description: item.summary || "",
           url: item.url || "",
           image: item.image || null,
-          source: "Finnhub",
+          source: item.source || "Finnhub",
+          provider: "Finnhub",
           sourceLogo: this.getLogoForSource("Finnhub"),
           publishedAt: item.datetime 
             ? new Date(item.datetime * 1000).toISOString()
-            : new Date().toISOString(),
-          tickers: item.related || [],
+            : null,
+          tickers: Array.isArray(item.related) ? item.related : String(item.related || "").split(",").map(s => s.trim()).filter(Boolean),
           category: this.categorizeNews(item.headline + " " + (item.summary || ""))
         }));
       }
@@ -66,11 +66,11 @@ const newsAggregator = {
 
       console.log("📡 Fetching from Polygon/Massive API (FALLBACK)...");
       
-      const response = await axios.get("https://api.massive.com/v1/news", {
+      const response = await axios.get("https://api.massive.com/v2/reference/news", {
         params: {
           apikey: massiveKey,
           limit: params.limit || 50,
-          sort: "published_utc"
+          sort: "published_utc", order: "desc"
         },
         timeout: 8000,
         headers: {
@@ -88,9 +88,9 @@ const newsAggregator = {
           description: item.description || item.snippet || item.summary || "",
           url: item.article_url || item.url || item.link || "",
           image: item.image_url || item.image || null,
-          source: item.source || "Massive",
+          source: item.publisher?.name || item.source || "Massive", provider: "Massive",
           sourceLogo: this.getLogoForSource(item.source || "Massive"),
-          publishedAt: item.published_utc || item.published_at || item.publishedAt || new Date().toISOString(),
+          publishedAt: item.published_utc || item.published_at || item.publishedAt || null,
           tickers: item.tickers || item.symbols || [],
           category: this.categorizeNews(item.title + " " + (item.description || item.summary || ""))
         }));
@@ -118,7 +118,7 @@ const newsAggregator = {
 
       console.log("📡 Fetching from Massive API (FALLBACK)...");
 
-      const response = await axios.get("https://api.massive.com/v1/news/top", {
+      const response = await axios.get("https://api.massive.com/v2/reference/news", {
         params: {
           apikey: massiveKey,
           limit: params.limit || 50,
@@ -139,9 +139,9 @@ const newsAggregator = {
           description: item.description || item.summary || item.content || "",
           url: item.url || item.link || "",
           image: item.image_url || item.image || item.imageUrl || "",
-          source: item.source || "Massive",
+          source: item.publisher?.name || item.source || "Massive", provider: "Massive",
           sourceLogo: this.getLogoForSource(item.source || "Massive"),
-          publishedAt: item.published_utc || item.published_at || item.publishedAt || item.published || new Date().toISOString(),
+          publishedAt: item.published_utc || item.published_at || item.publishedAt || item.published || null,
           tickers: item.tickers || item.symbols || item.ticker || [],
           category: this.categorizeNews(item.title + " " + (item.description || item.summary || item.content || ""))
         }));
@@ -311,8 +311,7 @@ const newsAggregator = {
       limit = 50,
       category = undefined,
       search = undefined,
-      symbols = undefined,
-      includeMockData = true
+      symbols = undefined
     } = options;
 
     console.log("🔍 Aggregating news from multiple sources (priority: Finnhub > Polygon > Massive)...");
@@ -331,21 +330,12 @@ const newsAggregator = {
       combinedNews = [...combinedNews, ...polygonNews];
     }
 
-    // If still not enough, try Massive
-    if (combinedNews.length < limit) {
-      const remainingLimit = limit - combinedNews.length;
-      const massiveNews = await this.fetchFromMassive({ limit: remainingLimit });
-      console.log(`📰 Massive: ${massiveNews.length} articles`);
-      combinedNews = [...combinedNews, ...massiveNews];
-    }
-
     console.log(`📰 Total fetched ${combinedNews.length} articles from live APIs`);
 
-    // If not enough articles, add mock data
-    if (includeMockData && combinedNews.length < limit) {
-      const mockNews = generateMockNews(limit - combinedNews.length);
-      combinedNews = [...combinedNews, ...mockNews];
-      console.log(`✅ Added ${mockNews.length} mock articles for padding`);
+    if (!combinedNews.length) {
+      const error = new Error("News providers are unavailable. Please try again later.");
+      error.status = 503;
+      throw error;
     }
 
     // Deduplicate and sort

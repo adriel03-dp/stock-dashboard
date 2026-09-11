@@ -26,14 +26,8 @@ export default function NewsPage() {
   const {
     articles: finnhubArticles,
     isConnected: finnhubConnected,
-    error: finnhubError
-  } = useFinnhubNews(true, (newArticles) => {
-    if (newArticles.length > 0) {
-      // Show notification for new articles
-      setNewArticleNotification(newArticles.length);
-      setTimeout(() => setNewArticleNotification(null), 3000);
-    }
-  });
+    error: finnhubError, status, refresh
+  } = useFinnhubNews(true);
 
   // Determine which articles to display
   useEffect(() => {
@@ -44,7 +38,7 @@ export default function NewsPage() {
       symbols,
       connected: finnhubConnected
     });
-    
+
     let itemsToDisplay = finnhubArticles;
 
     // Apply filters
@@ -55,7 +49,7 @@ export default function NewsPage() {
     if (search) {
       const lowerSearch = search.toLowerCase();
       itemsToDisplay = itemsToDisplay.filter(item =>
-        item.title.toLowerCase().includes(lowerSearch) ||
+        (item.title || "").toLowerCase().includes(lowerSearch) ||
         (item.description && item.description.toLowerCase().includes(lowerSearch))
       );
     }
@@ -64,8 +58,8 @@ export default function NewsPage() {
       const symbolSet = new Set(symbols.split(",").map(s => s.toUpperCase().trim()).filter(s => s));
       if (symbolSet.size > 0) {
         itemsToDisplay = itemsToDisplay.filter(item =>
-          item.related && item.related.some(ticker => symbolSet.has(ticker.toUpperCase())) ||
-          item.tickers && item.tickers.some(ticker => symbolSet.has(ticker.toUpperCase()))
+          Array.isArray(item.related) && item.related.some(ticker => symbolSet.has(ticker.toUpperCase())) ||
+          Array.isArray(item.tickers) && item.tickers.some(ticker => symbolSet.has(ticker.toUpperCase()))
         );
       }
     }
@@ -81,13 +75,13 @@ export default function NewsPage() {
   }, [finnhubArticles, category, search, symbols]);
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 bg-fixed">
+    <div className="page-content">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(34,197,94,0.15),transparent_55%)]" />
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_85%_100%,rgba(168,85,247,0.12),transparent_45%)]" />
-      <main className="relative z-0 mx-auto w-full max-w-7xl">
+      <div className="relative z-0 mx-auto w-full max-w-7xl">
         <PageHeader
           title="Market News"
-          description="Live Finnhub Real-time Headlines 🔴 LIVE"
+          description="The stories behind the numbers. Follow the latest market headlines."
           icon={Newspaper}
           breadcrumb={<Breadcrumb />}
         />
@@ -97,17 +91,18 @@ export default function NewsPage() {
             <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  🔴 Finnhub Live
+                  Market headlines
                 </div>
 
                 <div className="flex items-center gap-1 text-xs">
                   <span className={`inline-block h-2 w-2 rounded-full ${finnhubConnected ? "bg-green-500" : "bg-red-500 animate-pulse"}`} />
                   <span className={finnhubConnected ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}>
-                    {finnhubConnected ? "Connected" : "Connecting..."}
+                    {finnhubConnected ? "Updated every 60 seconds" : finnhubError ? "Feed unavailable" : "Loading headlines…"}
                   </span>
                 </div>
               </div>
 
+              <button type="button" onClick={refresh} className="rounded border border-slate-300 px-3 py-2 text-sm">Refresh news</button>
               {newArticleNotification && (
                 <div className="animate-pulse rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-200">
                   ✨ {newArticleNotification} new article{newArticleNotification > 1 ? "s" : ""} arrived!
@@ -162,18 +157,19 @@ export default function NewsPage() {
             </div>
 
             {/* Content display */}
-            {!finnhubError && (
+            {(!finnhubError || displayItems.length > 0) && (
               <>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Showing {displayItems.length} article{displayItems.length !== 1 ? "s" : ""} from Finnhub
+                  Showing {displayItems.length} article{displayItems.length !== 1 ? "s" : ""} from market news providers
                 </div>
+                {status?.updatedAt && <p className="text-xs text-slate-500">Last refreshed: {new Date(status.updatedAt).toLocaleTimeString()}{finnhubError ? " · Showing previously fetched articles" : ""}</p>}
                 <NewsList items={displayItems} />
               </>
             )}
             {finnhubError && <ErrorMessage message={finnhubError} />}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
