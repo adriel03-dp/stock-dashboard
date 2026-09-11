@@ -46,9 +46,10 @@ app.use("/api/market", marketRoutes);
 
 app.get("/", (req, res) => res.json({ status: "API running" }));
 app.get("/healthz", (req, res) => {
-  res.json({
-    status: "ok",
-    database: mongoose.connection.readyState === 1 ? "connected" : "connecting"
+  const databaseReady = mongoose.connection.readyState === 1;
+  res.status(databaseReady ? 200 : 503).json({
+    status: databaseReady ? "ok" : "not_ready",
+    database: databaseReady ? "connected" : "disconnected"
   });
 });
 

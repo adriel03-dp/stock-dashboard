@@ -5,6 +5,24 @@ import { fetchAVMarketOverview, fetchAVSectors } from "../services/alphaVantageS
 
 const router = express.Router();
 
+async function fetchFallbackOverview(limit) {
+  const errors = [];
+  try { return await fetchFinnhubOverview(); }
+  catch (error) { errors.push(`Finnhub: ${error.message}`); }
+  try { return await fetchAVMarketOverview(limit); }
+  catch (error) { errors.push(`Alpha Vantage: ${error.message}`); }
+  throw new Error(errors.join("; "));
+}
+
+async function fetchFallbackSectors() {
+  const errors = [];
+  try { return await fetchFinnhubSectors(); }
+  catch (error) { errors.push(`Finnhub: ${error.message}`); }
+  try { return await fetchAVSectors(); }
+  catch (error) { errors.push(`Alpha Vantage: ${error.message}`); }
+  throw new Error(errors.join("; "));
+}
+
 function extractList(payload) {
   const list = payload?.results || payload?.tickers || payload?.data || payload?.items || [];
   return Array.isArray(list) ? list : [];

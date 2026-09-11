@@ -27,7 +27,9 @@ const newsAggregator = {
       
       if (articles.length > 0) {
         console.log(`✅ Finnhub API returned ${articles.length} articles`);
-        return articles.map(item => ({
+        return articles.map(item => {
+          const source = item.source || "Finnhub";
+          return ({
           id: item.id || item.url || Math.random().toString(36),
           title: item.headline || "Untitled",
           description: item.summary || "",
@@ -41,7 +43,8 @@ const newsAggregator = {
             : null,
           tickers: Array.isArray(item.related) ? item.related : String(item.related || "").split(",").map(s => s.trim()).filter(Boolean),
           category: this.categorizeNews(item.headline + " " + (item.summary || ""))
-        }));
+          });
+        });
       }
 
       console.log("⚠️ Finnhub API returned no results");
@@ -82,7 +85,9 @@ const newsAggregator = {
       
       if (results.length > 0) {
         console.log(`✅ Polygon/Massive API returned ${results.length} articles`);
-        return results.map(item => ({
+        return results.map(item => {
+          const source = item.publisher?.name || item.source || "Massive";
+          return ({
           id: item.id || item.article_url || item.url || Math.random().toString(36),
           title: item.title || item.headline || "Untitled",
           description: item.description || item.snippet || item.summary || "",
@@ -93,7 +98,8 @@ const newsAggregator = {
           publishedAt: item.published_utc || item.published_at || item.publishedAt || null,
           tickers: item.tickers || item.symbols || [],
           category: this.categorizeNews(item.title + " " + (item.description || item.summary || ""))
-        }));
+          });
+        });
       }
 
       console.log("⚠️ Polygon/Massive API returned no results");
@@ -133,7 +139,9 @@ const newsAggregator = {
       const news = response.data?.results || response.data?.data || response.data?.news || [];
       if (Array.isArray(news) && news.length > 0) {
         console.log(`✅ Massive API returned ${news.length} articles`);
-        return news.map(item => ({
+        return news.map(item => {
+          const source = item.publisher?.name || item.source || "Massive";
+          return ({
           id: item.id || item.url || Math.random().toString(36),
           title: item.title || item.headline || "Untitled",
           description: item.description || item.summary || item.content || "",
@@ -144,7 +152,8 @@ const newsAggregator = {
           publishedAt: item.published_utc || item.published_at || item.publishedAt || item.published || null,
           tickers: item.tickers || item.symbols || item.ticker || [],
           category: this.categorizeNews(item.title + " " + (item.description || item.summary || item.content || ""))
-        }));
+          });
+        });
       }
 
       console.log("⚠️ Massive API returned no results");

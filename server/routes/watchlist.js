@@ -139,7 +139,12 @@ router.patch("/:id/refresh", async (req, res) => {
     } else if (item.type === "crypto") {
       try {
         const coin = await fetchCoinMarket((item.externalId || item.symbol || "").toLowerCase());
-        if (coin?.current_price != null) item.lastPrice = coin.current_price;
+        if (coin?.current_price != null) {
+          item.lastPrice = coin.current_price;
+          item.lastPriceAt = new Date();
+          item.lastProvider = "Binance";
+          didRefresh = true;
+        }
       } catch (e) {
         /* ignore */
       }

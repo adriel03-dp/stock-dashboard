@@ -5,6 +5,11 @@ const binanceClient = axios.create({
   timeout: 10000
 });
 
+const coinCache = new Map();
+const pendingCoins = new Map();
+const COIN_FRESH_TTL_MS = 30_000;
+const COIN_STALE_TTL_MS = 45 * 60_000;
+
 async function request(url, params = {}) {
   try {
     const { data } = await binanceClient.get(url, { params });
@@ -47,7 +52,7 @@ export async function fetchTopCoins(limit = 20) {
 }
 
 // Get specific coin market data
-export async function fetchCoinMarket(identifier) {
+async function fetchCoinMarketUncached(identifier) {
   if (!identifier) return null;
 
   try {
@@ -85,4 +90,26 @@ export async function fetchCoinMarket(identifier) {
     console.error("Failed to fetch coin market:", err.message);
     return null;
   }
+}
+
+export async function fetchCoinMarket(identifier) {
+  const key = String(identifier || "").trim().toUpperCase();
+  if (!key) return null;
+  const cached = coinCache.get(key);
+  if (cached && Date.now() - cached.at <= COIN_FRESH_TTL_MS) return cached.value;
+  if (pendingCoins.has(key)) return pendingCoins.get(key);
+
+  const request = (async () => {
+    try {
+      const value = await fetchCoinMarketUncached(key);
+      if (value) coinCache.set(key, { at: Date.now(), value });
+      if (value) return value;
+      const currentAge = cached ? Date.now() - cached.at : Number.POSITIVE_INFINITY;
+      return cached && currentAge <= COIN_STALE_TTL_MS ? cached.value : null;
+    } finally {
+      pendingCoins.delete(key);
+    }
+  })();
+  pendingCoins.set(key, request);
+  return request;
 }

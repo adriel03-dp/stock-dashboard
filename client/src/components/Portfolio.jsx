@@ -188,7 +188,7 @@ export default function Portfolio({ items = [], onUpdated }) {
                       </div>
                       <div className="flex justify-between text-xs mt-1">
                         <span className="text-slate-500 dark:text-slate-400">P/L:</span>
-                        <span className={`font-medium ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        <span className={`font-medium ${isPositive == null ? "text-slate-500 dark:text-slate-400" : isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
                           {formatSignedCurrency(gainLoss)}
                         </span>
                       </div>

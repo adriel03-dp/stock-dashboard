@@ -20,7 +20,6 @@ export default function NewsPage() {
   const [search, setSearch] = useState("");
   const [symbols, setSymbols] = useState("");
   const [displayItems, setDisplayItems] = useState([]);
-  const [newArticleNotification, setNewArticleNotification] = useState(null);
 
   // Finnhub real-time stream hook (ONLY SOURCE)
   const {
