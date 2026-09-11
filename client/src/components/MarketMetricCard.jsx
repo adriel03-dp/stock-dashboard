@@ -58,7 +58,7 @@ export default function MarketMetricCard({ title, value, change, subtitle, tone 
       {subtitle && <div className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</div>}
 
       {tone === "highlight" && (
-        <div className="text-xs font-medium text-blue-600 dark:text-blue-400">Markets open · Tracking live movement</div>
+        <div className="text-xs font-medium text-blue-600 dark:text-blue-400">Market benchmark</div>
       )}
     </motion.div>
   );

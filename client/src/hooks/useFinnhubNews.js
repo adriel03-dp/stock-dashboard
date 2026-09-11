@@ -7,8 +7,7 @@ import { getApiBaseUrl } from "../utils/apiBase";
  */
 export function useFinnhubNews(enabled = true, onNewArticles = null) {
   const [articles, setArticles] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [status, setStatus] = useState(null);
+  const [isConnected, setConnected] = useState(false);
   const [error, setError] = useState(null);
   const eventSourceRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
@@ -158,6 +157,9 @@ export function useFinnhubNews(enabled = true, onNewArticles = null) {
    * Refresh news (pull latest from cache)
    */
   const refresh = useCallback(async () => {
+    if (!enabled || request.current) return;
+    const controller = new AbortController();
+    request.current = controller;
     try {
       const apiBaseUrl = getApiBaseUrl();
       const response = await fetch(`${apiBaseUrl}/news/finnhub/cached?limit=50`);
@@ -171,8 +173,11 @@ export function useFinnhubNews(enabled = true, onNewArticles = null) {
         setArticles(data.articles);
       }
     } catch (err) {
-      console.error("Error refreshing Finnhub news:", err);
-      setError("Failed to refresh news");
+      if (controller.signal.aborted) return;
+      setConnected(false);
+      setError(err.response?.data?.error || 'Unable to refresh news. Please try again.');
+    } finally {
+      if (request.current === controller) request.current = null;
     }
   }, []);
 
@@ -216,29 +221,10 @@ export function useFinnhubNews(enabled = true, onNewArticles = null) {
 
   // Connect/disconnect based on enabled prop
   useEffect(() => {
-    if (enabled) {
-      connect();
-    } else {
-      disconnect();
-    }
-
-    return () => {
-      disconnect();
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-    };
-  }, [enabled, connect, disconnect]);
-
-  return {
-    articles,
-    isConnected,
-    error,
-    status,
-    refresh,
-    getStatus,
-    controlStream,
-    disconnect,
-    connect
-  };
+    if (!enabled) return;
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => {clearInterval(timer); request.current?.abort(); request.current = null;};
+  }, [enabled, refresh]);
+  return {articles, isConnected, error, status, refresh};
 }

@@ -1,5 +1,4 @@
 import axios from "axios";
-import { generateMockNews } from "./mockData.js";
 import newsAggregator from "./newsAggregatorService.js";
 
 /**
@@ -90,8 +89,7 @@ class NewsStreamingService {
   async fetchAndBroadcast() {
     try {
       const news = await newsAggregator.aggregateNews({
-        limit: 100,
-        includeMockData: true
+        limit: 100
       });
 
       if (!Array.isArray(news)) {

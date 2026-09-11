@@ -2,7 +2,7 @@ import express from "express";
 import authMiddleware from "../middleware/auth.js";
 import WatchItem from "../models/WatchItem.js";
 import { fetchCoinMarket } from "../services/binanceService.js";
-import { fetchMassiveStockSummary } from "../utils/stockData.js";
+import { getStockQuote } from "../services/quoteService.js";
 
 const router = express.Router();
 
@@ -18,7 +18,11 @@ router.post("/", async (req, res) => {
     const trimmed = symbol.trim();
     const normalizedSymbol = trimmed.toUpperCase();
 
-    const existing = await WatchItem.findOne({ symbol: normalizedSymbol, type: normalizedType });
+    const existing = await WatchItem.findOne({
+      userId: req.userId,
+      symbol: normalizedSymbol,
+      type: normalizedType
+    });
     if (existing) return res.status(409).json({ error: "Item already in watchlist" });
 
     let resolvedName = name;
@@ -26,11 +30,14 @@ router.post("/", async (req, res) => {
     let externalId = normalizedSymbol;
     const coinData = normalizedType === "crypto" ? await fetchCoinMarket(trimmed.toLowerCase()) : null;
 
-    if (normalizedType === "stock" && process.env.MASSIVE_API_KEY) {
-      const summary = await fetchMassiveStockSummary(normalizedSymbol);
-      if (summary) {
-        if (price == null && summary.price != null) price = summary.price;
-        if (!resolvedName && summary.name) resolvedName = summary.name;
+    let stockQuote = null;
+    if (normalizedType === "stock") {
+      try {
+        stockQuote = await getStockQuote(normalizedSymbol);
+        if (price == null && stockQuote?.price != null) price = stockQuote.price;
+        if (!resolvedName && stockQuote?.name) resolvedName = stockQuote.name;
+      } catch (error) {
+        // A watch item can still be saved; its quote will be retried later.
       }
     }
 
@@ -43,9 +50,12 @@ router.post("/", async (req, res) => {
     if (!resolvedName) resolvedName = normalizedSymbol;
 
     const item = await WatchItem.create({
+      userId: req.userId,
       symbol: normalizedSymbol,
       name: resolvedName,
       lastPrice: price,
+      lastPriceAt: stockQuote?.cachedAt ? new Date(stockQuote.cachedAt) : (price != null ? new Date() : null),
+      lastProvider: stockQuote?.provider || null,
       type: normalizedType,
       externalId
     });
@@ -58,43 +68,45 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const filter = {};
+    const filter = { userId: req.userId };
     if (req.query.type) filter.type = req.query.type === "crypto" ? "crypto" : "stock";
     const items = await WatchItem.find(filter).sort({ addedAt: -1 });
     
-    // Enrich stocks with live prices from Massive API
-    if (process.env.MASSIVE_API_KEY) {
-      const enrichedItems = await Promise.all(
-        items.map(async (item) => {
-          const itemObj = item.toObject();
+    const enrichedItems = await Promise.all(
+      items.map(async (item) => {
+        const itemObj = item.toObject();
+        try {
           if (item.type === "stock") {
-            try {
-              const summary = await fetchMassiveStockSummary(item.symbol);
-              if (summary?.price != null) {
-                itemObj.lastPrice = summary.price;
-                itemObj.liveData = summary;
+            const quote = await getStockQuote(item.symbol);
+            if (quote?.price != null) {
+              itemObj.lastPrice = quote.price;
+              itemObj.lastPriceAt = quote.cachedAt;
+              itemObj.lastProvider = quote.provider;
+              itemObj.isStale = quote.isStale;
+              itemObj.liveData = quote;
+
+              const quoteAt = new Date(quote.cachedAt);
+              if (!item.lastPriceAt || quoteAt > item.lastPriceAt) {
+                await WatchItem.updateOne(
+                  { _id: item._id, userId: req.userId },
+                  { lastPrice: quote.price, lastPriceAt: quoteAt, lastProvider: quote.provider }
+                );
               }
-            } catch (err) {
-              // Keep cached price if API fails
-              console.warn(`Failed to fetch live price for ${item.symbol}:`, err.message);
             }
           } else if (item.type === "crypto") {
-            try {
-              const coin = await fetchCoinMarket((item.externalId || item.symbol || "").toLowerCase());
-              if (coin?.current_price != null) {
-                itemObj.lastPrice = coin.current_price;
-              }
-            } catch (err) {
-              console.warn(`Failed to fetch live crypto price for ${item.symbol}:`, err.message);
-            }
+            const coin = await fetchCoinMarket((item.externalId || item.symbol || "").toLowerCase());
+            if (coin?.current_price != null) itemObj.lastPrice = coin.current_price;
           }
-          return itemObj;
-        })
-      );
-      return res.json(enrichedItems);
-    }
-    
-    res.json(items);
+        } catch (err) {
+          // Keep the last persisted price if every live provider is unavailable.
+          itemObj.isStale = true;
+          console.warn(`Failed to refresh ${item.symbol}:`, err.message);
+        }
+        return itemObj;
+      })
+    );
+
+    res.json(enrichedItems);
   } catch (err) {
     console.error("Watchlist error:", err);
     res.status(500).json({ error: "Failed to load watchlist" });
@@ -103,7 +115,7 @@ router.get("/", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await WatchItem.findByIdAndDelete(req.params.id);
+    const deleted = await WatchItem.findOneAndDelete({ _id: req.params.id, userId: req.userId });
     if (!deleted) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {
@@ -113,12 +125,17 @@ router.delete("/:id", async (req, res) => {
 
 router.patch("/:id/refresh", async (req, res) => {
   try {
-    const item = await WatchItem.findById(req.params.id);
+    const item = await WatchItem.findOne({ _id: req.params.id, userId: req.userId });
     if (!item) return res.status(404).json({ error: "Not found" });
 
-    if (item.type === "stock" && process.env.MASSIVE_API_KEY) {
-      const summary = await fetchMassiveStockSummary(item.symbol);
-      if (summary?.price != null) item.lastPrice = summary.price;
+    let refreshedQuote = null;
+    if (item.type === "stock") {
+      refreshedQuote = await getStockQuote(item.symbol, { forceRefresh: true });
+      if (refreshedQuote?.price != null) {
+        item.lastPrice = refreshedQuote.price;
+        item.lastPriceAt = new Date(refreshedQuote.cachedAt);
+        item.lastProvider = refreshedQuote.provider;
+      }
     } else if (item.type === "crypto") {
       try {
         const coin = await fetchCoinMarket((item.externalId || item.symbol || "").toLowerCase());
@@ -128,7 +145,9 @@ router.patch("/:id/refresh", async (req, res) => {
       }
     }
     await item.save();
-    res.json(item);
+    const result = item.toObject();
+    result.isStale = Boolean(refreshedQuote?.isStale);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: "Failed to refresh" });
   }

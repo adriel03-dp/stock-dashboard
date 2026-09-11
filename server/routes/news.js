@@ -1,7 +1,6 @@
 import express from "express";
 import axios from "axios";
 import { massiveService } from "../services/massiveService.js";
-import { generateMockNews } from "../services/mockData.js";
 import newsAggregator from "../services/newsAggregatorService.js";
 import newsStreamingService from "../services/newsStreamingService.js";
 import FinnhubNewsService from "../services/finnhubNewsService.js";
@@ -191,36 +190,7 @@ router.get("/top", async (req, res) => {
       limit: limit * 1.5, // Fetch more to ensure after filtering we have enough
       category,
       search,
-      symbols,
-      includeMockData: true
-    });
-
-    // Filter for stock and crypto related news
-    news = news.filter(item => {
-      if (!item) return false;
-      
-      // Check if related to stocks or crypto
-      const title = (item.title || "").toLowerCase();
-      const description = (item.description || "").toLowerCase();
-      const content = title + " " + description;
-      
-      // Stock keywords
-      const stockKeywords = ["stock", "equity", "market", "trading", "nasdaq", "dow", "s&p", "earnings", "dividend", "investment", "portfolio", "shares"];
-      // Crypto keywords
-      const cryptoKeywords = ["bitcoin", "ethereum", "crypto", "blockchain", "btc", "eth", "nft", "defi", "token", "coin", "digital asset"];
-      // Exclude keywords
-      const excludeKeywords = ["weather", "sports", "celebrity", "entertainment", "movie", "actor", "actress"];
-      
-      // Check exclude keywords first
-      if (excludeKeywords.some(keyword => content.includes(keyword))) {
-        return false;
-      }
-      
-      // Must contain stock or crypto keywords, or have relevant tickers
-      const hasStockCryptoKeywords = [...stockKeywords, ...cryptoKeywords].some(keyword => content.includes(keyword));
-      const hasTickers = item.tickers && item.tickers.length > 0;
-      
-      return hasStockCryptoKeywords || hasTickers;
+      symbols
     });
 
     // Sort by date (newest first)
@@ -233,14 +203,7 @@ router.get("/top", async (req, res) => {
     return res.json(news.slice(0, limit));
   } catch (err) {
     console.error("news error:", err?.message || err);
-    // Fall back to mock data on any error
-    const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 100);
-    const category = req.query.category && req.query.category !== "all" ? req.query.category : undefined;
-    let mockNews = generateMockNews(limit);
-    if (category) {
-      mockNews = mockNews.filter(item => item.category === category);
-    }
-    return res.json(mockNews);
+    return res.status(503).json({ error: "News providers are unavailable. Please try again later.", code: "DATA_UNAVAILABLE" });
   }
 });
 
@@ -601,7 +564,7 @@ router.get("/finnhub/stream", async (req, res) => {
       timestamp: new Date().toISOString() 
     })}\n\n`);
 
-    // Fetch initial articles using cache - try Finnhub first, fallback to mock data on rate limit
+    // Fetch initial articles using cache - try Finnhub first, fallback to provider data on rate limit
     console.log(`📡 [${clientId}] Fetching initial articles...`);
     let initialArticles = [];
     let finnhubSuccess = false;
@@ -613,7 +576,7 @@ router.get("/finnhub/stream", async (req, res) => {
       finnhubSuccess = true;
       console.log(`✅ [${clientId}] Got ${initialArticles.length} articles from Finnhub cache`);
     } else {
-      // Fallback: use the aggregated news endpoint with mock data
+      // Fallback: use the aggregated news endpoint with provider data
       try {
         console.log(`📡 [${clientId}] Falling back to aggregated news...`);
         const internalApiBase =
@@ -628,13 +591,7 @@ router.get("/finnhub/stream", async (req, res) => {
         console.log(`✅ [${clientId}] Got ${initialArticles.length} articles from aggregated news`);
       } catch (fallbackErr) {
         console.error(`❌ [${clientId}] Fallback also failed:`, fallbackErr.message);
-        // Last resort: use mock data directly
-        initialArticles = generateMockNews(50).map(item => ({
-          ...item,
-          // Ensure sourceLogo is always an array
-          sourceLogo: Array.isArray(item.sourceLogo) ? item.sourceLogo : (item.sourceLogo ? [item.sourceLogo] : ["https://via.placeholder.com/48?text=News"])
-        }));
-        console.log(`✅ [${clientId}] Using ${initialArticles.length} mock articles`);
+        initialArticles = [];
       }
     }
 
@@ -650,7 +607,7 @@ router.get("/finnhub/stream", async (req, res) => {
         })}\n\n`
       );
     } else {
-      console.log(`⚠️ [${clientId}] No articles available`);
+      res.write(`data: ${JSON.stringify({type: "error", error: "News providers are unavailable. Please try again later."})}\n\n`);
     }
 
     // Handle client disconnect
@@ -730,8 +687,7 @@ router.get("/finnhub/cached", async (req, res) => {
       console.log(`📡 Cache has ${cache.length} articles, fetching more...`);
       try {
         const freshNews = await newsAggregator.aggregateNews({
-          limit,
-          includeMockData: true
+          limit
         });
         cache = freshNews;
       } catch (err) {

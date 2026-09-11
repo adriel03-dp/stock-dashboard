@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { TrendingUp } from "lucide-react";
 import Breadcrumb from "../components/Breadcrumb";
 import PageHeader from "../components/PageHeader";
@@ -29,6 +30,7 @@ function getStoredAutoRefresh() {
 
 export default function Dashboard() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [refreshSeconds, setRefreshSeconds] = useState(() => getStoredAutoRefresh());
   const refreshIntervalMs = Math.max(refreshSeconds, MIN_REFRESH_SECONDS) * 1000;
   const overviewPollMs = Math.max(refreshIntervalMs, 30000);
@@ -188,6 +190,16 @@ export default function Dashboard() {
   }, [overview]);
 
   const metricCards = useMemo(() => {
+    const liveHighlights = overview?.highlights?.topMarketCap || overview?.highlights?.mostActive || overview?.highlights?.topGainers || [];
+    if (liveHighlights.length) {
+      return liveHighlights.slice(0, 4).map((item) => ({
+        title: item.symbol || item.name || "Market quote",
+        value: item.price,
+        change: item.changePercent,
+        subtitle: item.name || "Finnhub quote",
+        tone: "neutral"
+      }));
+    }
     const indices = Array.isArray(overview?.indices) ? overview.indices : [];
     if (indices.length) {
       return indices.slice(0, 4).map((item, index) => ({
@@ -201,31 +213,17 @@ export default function Dashboard() {
       }));
     }
 
-    return [
-      { title: "S&P 500", value: 4500, change: 0.24, subtitle: "Prev close", tone: "highlight" },
-      { title: "NIFTY 50", value: 19200, change: -0.34, subtitle: "NSE benchmark" },
-      { title: "Dow Jones", value: 34000, change: 0.12, subtitle: "US blue chips" },
-      { title: "NASDAQ", value: 13750, change: 0.45, subtitle: "Growth leaders" }
-    ];
+    return ["S&P 500", "NIFTY 50", "Dow Jones", "NASDAQ"].map(title => ({ title, value: null, change: null, subtitle: "Awaiting market data" }));
   }, [overview]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.15),transparent_55%)] dark:bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.08),transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.12),transparent_45%)] dark:bg-[radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.05),transparent_45%)]" />
-      <main className="mx-auto w-full max-w-7xl">
+    <div className="page-content">
+      <div className="mx-auto w-full max-w-7xl">
         <PageHeader
-          title="Market Dashboard"
-          description="Real-time market data, trends, and analytics"
+          title="The market, in perspective."
+          description="A daily view of the movements, stories, and opportunities worth watching."
           icon={TrendingUp}
           breadcrumb={<Breadcrumb />}
-          backgroundImages={[
-            "/stock-market.jpg",
-            "/financial-data.jpg",
-            "/screen-showing-data.jpg",
-            "/cryptocurrwncy-concept.jpg"
-          ]}
-          cycleInterval={3000}
         />
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -238,7 +236,7 @@ export default function Dashboard() {
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <h1 className="text-2xl font-semibold text-slate-900 dark:text-white sm:text-3xl">Global Market Overview</h1>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Market overview</h2>
                   {marketStatusLabel && (
                     <p
                       className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -442,11 +440,7 @@ export default function Dashboard() {
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    window.dispatchEvent(new CustomEvent("watchlist:navigate", { detail: { tab: "portfolio" } }));
-                  }
-                }}
+                onClick={() => navigate("/portfolio")}
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-blue-500/30 transition hover:bg-blue-700 dark:hover:bg-blue-600"
               >
                 Open Portfolio
@@ -456,20 +450,20 @@ export default function Dashboard() {
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/30 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
               <h3 className="text-base font-semibold text-slate-900 dark:text-white">News & Alerts</h3>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                Curated headlines from Massive with live sentiment scoring arrive here once you subscribe to alerts.
+                Follow the stories behind the numbers. Find the latest market headlines in your news feed.
               </p>
               <ul className="mt-4 space-y-3 text-sm text-slate-500 dark:text-slate-400">
                 <li className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-xs dark:border-slate-600 dark:bg-slate-800">
-                  Configure alert rules in Settings → Notifications.
+                  Make your workspace your own in Settings.
                 </li>
                 <li className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-xs dark:border-slate-600 dark:bg-slate-800">
-                  Real-time Massive feeds stream directly into the Watchlist view.
+                  Keep the companies you care about close in your Watchlist.
                 </li>
               </ul>
             </div>
           </motion.aside>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
